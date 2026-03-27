@@ -21,9 +21,23 @@ p{font-size:14px;color:#666;margin-bottom:28px;line-height:1.6}
 <body>
 <div class="card">
   <div class="icon">🎉</div>
-  <h1>Proプランへようこそ！</h1>
-  <p>アップグレードが完了しました。<br>タスクを無制限に作成できます。</p>
-  <a href="/" class="btn">タスク管理を始める</a>
+  <h1 data-i18n="h1">Proプランへようこそ！</h1>
+  <p data-i18n="desc">アップグレードが完了しました。<br>タスクを無制限に作成できます。</p>
+  <a href="/" class="btn" data-i18n="btn">タスク管理を始める</a>
 </div>
+<script>
+const L={
+  ja:{h1:"Proプランへようこそ！",desc:"アップグレードが完了しました。タスクを無制限に作成できます。",btn:"タスク管理を始める"},
+  en:{h1:"Welcome to Pro!",desc:"Your upgrade is complete.\nYou can now create unlimited tasks.",btn:"Start Task Manager"},
+  zh:{h1:"欢迎加入 Pro！",desc:"升级完成。\n您现在可以创建无限任务。",btn:"开始任务管理"},
+  ko:{h1:"Pro 플랜에 오신 것을 환영합니다！",desc:"업그레이드가 완료되었습니다.\n작업을 무제한으로 만들 수 있습니다。",btn:"작업 관리 시작"},
+  es:{h1:"¡Bienvenido a Pro!",desc:"Tu actualización está completa.\nAhora puedes crear tareas ilimitadas.",btn:"Iniciar gestor de tareas"},
+  fr:{h1:"Bienvenue dans Pro !",desc:"Votre mise à niveau est terminée.\nVous pouvez maintenant créer des tâches illimitées.",btn:"Démarrer le gestionnaire de tâches"},
+};
+const _lang=localStorage.getItem("tf_lang")||"ja";
+const d=L[_lang]||L.ja;
+document.documentElement.lang=_lang;
+document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=d[el.dataset.i18n]||el.textContent);
+</script>
 </body>
 </html>

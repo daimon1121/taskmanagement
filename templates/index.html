@@ -372,23 +372,44 @@ th.col-filtered .filter-btn{color:#2471a3}
   opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;
 }
 #toast.show{opacity:1}
+
+/* ── Lang switcher ──────────────────────────────── */
+.lang-switcher{position:relative}
+.lang-trigger{background:transparent;border:none;color:#8fa3b1;cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;transition:background .15s}
+.lang-trigger:hover{background:#2c3e50}
+.lang-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#1e2f3d;border:1px solid #3d5166;border-radius:8px;padding:4px;z-index:300;min-width:130px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.lang-menu.open{display:block}
+.lang-opt{display:block;width:100%;background:transparent;border:none;color:#cde;font-size:12px;padding:5px 10px;cursor:pointer;text-align:left;border-radius:4px;transition:background .15s}
+.lang-opt:hover,.lang-opt.active{background:#2c3e50}
+.lang-opt.active{color:#fff;font-weight:700}
 </style>
 </head>
 <body>
 
 <!-- ══ TAB BAR ══ -->
 <div id="tab-bar">
-  <button type="button" id="tab-btn-task"     class="tab-btn active" onclick="switchTab('task')">タスク</button>
-  <button type="button" id="tab-btn-tool"     class="tab-btn"        onclick="switchTab('tool')">ツール</button>
-  <button type="button" id="tab-btn-assignee" class="tab-btn"        onclick="switchTab('assignee')">担当者</button>
+  <button type="button" id="tab-btn-task"     class="tab-btn active" onclick="switchTab('task')"     data-i18n="tab_task">タスク</button>
+  <button type="button" id="tab-btn-tool"     class="tab-btn"        onclick="switchTab('tool')"     data-i18n="tab_tool">ツール</button>
+  <button type="button" id="tab-btn-assignee" class="tab-btn"        onclick="switchTab('assignee')" data-i18n="tab_assignee">担当者</button>
   <div style="margin-left:auto;display:flex;align-items:center;gap:10px;padding-right:4px">
+    <div class="lang-switcher" id="lang-switcher">
+      <button type="button" class="lang-trigger" onclick="toggleLangMenu()" id="lang-trigger">🌐</button>
+      <div class="lang-menu" id="lang-menu">
+        <button class="lang-opt" data-lang="ja" onclick="setLang('ja')">🇯🇵 日本語</button>
+        <button class="lang-opt" data-lang="en" onclick="setLang('en')">🇺🇸 English</button>
+        <button class="lang-opt" data-lang="zh" onclick="setLang('zh')">🇨🇳 中文</button>
+        <button class="lang-opt" data-lang="ko" onclick="setLang('ko')">🇰🇷 한국어</button>
+        <button class="lang-opt" data-lang="es" onclick="setLang('es')">🇪🇸 Español</button>
+        <button class="lang-opt" data-lang="fr" onclick="setLang('fr')">🇫🇷 Français</button>
+      </div>
+    </div>
     {% if is_pro %}
       <span style="background:#f39c12;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px">PRO</span>
     {% else %}
       <span style="background:#555;color:#ccc;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px">FREE</span>
-      <a href="/pricing" style="background:#3498db;color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:4px;text-decoration:none">アップグレード</a>
+      <a href="/pricing" data-i18n="upgrade" style="background:#3498db;color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:4px;text-decoration:none">アップグレード</a>
     {% endif %}
-    <a href="/logout" style="color:#8fa3b1;font-size:12px;text-decoration:none">ログアウト</a>
+    <a href="/logout" data-i18n="logout" style="color:#8fa3b1;font-size:12px;text-decoration:none">ログアウト</a>
   </div>
 </div>
 
@@ -399,40 +420,40 @@ th.col-filtered .filter-btn{color:#2471a3}
 
 <aside id="filter-sidebar">
   <div class="sb-hdr">
-    <span>フィルタ</span>
+    <span data-i18n="filter">フィルタ</span>
     <button type="button" class="sb-reset" onclick="clearTaskFilters()" title="リセット">✕</button>
   </div>
   <div class="sb-section">
-    <div class="sb-title">タスク名</div>
+    <div class="sb-title" data-i18n="filter_name">タスク名</div>
     <div class="sb-search">
-      <input type="text" id="filter-name" placeholder="🔍 検索…" oninput="applyTaskFilter()" autocomplete="off">
+      <input type="text" id="filter-name" placeholder="🔍 検索…" data-i18n="search_ph" oninput="applyTaskFilter()" autocomplete="off">
     </div>
   </div>
   <div class="sb-section">
-    <div class="sb-title">ステータス</div>
+    <div class="sb-title" data-i18n="filter_status">ステータス</div>
     <div id="filter-status-list">
-      <label class="sb-item"><input type="checkbox" value="未着手" onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-未着手"></span>未着手</label>
-      <label class="sb-item"><input type="checkbox" value="進行中" onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-進行中"></span>進行中</label>
-      <label class="sb-item"><input type="checkbox" value="完了"   onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-完了"></span>完了</label>
-      <label class="sb-item"><input type="checkbox" value="保留"   onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-保留"></span>保留</label>
+      <label class="sb-item"><input type="checkbox" value="未着手" onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-未着手"></span><span data-st="未着手">未着手</span></label>
+      <label class="sb-item"><input type="checkbox" value="進行中" onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-進行中"></span><span data-st="進行中">進行中</span></label>
+      <label class="sb-item"><input type="checkbox" value="完了"   onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-完了"></span><span data-st="完了">完了</span></label>
+      <label class="sb-item"><input type="checkbox" value="保留"   onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-保留"></span><span data-st="保留">保留</span></label>
     </div>
   </div>
   <div class="sb-section-list">
     <div class="sb-title-row">
       <span class="sb-title">Tool</span>
       <div class="sb-ctrl-row">
-        <button type="button" class="sb-ctrl-btn" onclick="selectAllFilter('filter-tool-list')">全</button>
-        <button type="button" class="sb-ctrl-btn" onclick="clearFilter('filter-tool-list')">解</button>
+        <button type="button" class="sb-ctrl-btn" data-i18n="all" onclick="selectAllFilter('filter-tool-list')">全</button>
+        <button type="button" class="sb-ctrl-btn" data-i18n="clr" onclick="clearFilter('filter-tool-list')">解</button>
       </div>
     </div>
     <div id="filter-tool-list" class="sb-scroll"></div>
   </div>
   <div class="sb-section-grow">
     <div class="sb-title-row">
-      <span class="sb-title">担当者</span>
+      <span class="sb-title" data-i18n="tab_assignee">担当者</span>
       <div class="sb-ctrl-row">
-        <button type="button" class="sb-ctrl-btn" onclick="selectAllFilter('filter-assignee-list')">全</button>
-        <button type="button" class="sb-ctrl-btn" onclick="clearFilter('filter-assignee-list')">解</button>
+        <button type="button" class="sb-ctrl-btn" data-i18n="all" onclick="selectAllFilter('filter-assignee-list')">全</button>
+        <button type="button" class="sb-ctrl-btn" data-i18n="clr" onclick="clearFilter('filter-assignee-list')">解</button>
       </div>
     </div>
     <div id="filter-assignee-list" class="sb-scroll"></div>
@@ -443,7 +464,7 @@ th.col-filtered .filter-btn{color:#2471a3}
 <div id="task-main">
   <section id="gantt-section" class="panel">
     <div class="panel-hdr">
-      <span class="flex">ガントチャート</span>
+      <span class="flex" data-i18n="gantt">ガントチャート</span>
       <button type="button" class="nav-btn" onclick="prevMonth()">◀</button>
       <div class="month-picker-wrap">
         <button type="button" class="cal-trigger" id="month-picker-trigger" onclick="toggleMonthPicker()" title="年月を選択">
@@ -456,7 +477,7 @@ th.col-filtered .filter-btn{color:#2471a3}
         </div>
       </div>
       <button type="button" class="nav-btn" onclick="nextMonth()">▶</button>
-      <button type="button" class="nav-btn today" onclick="goToday()">今月</button>
+      <button type="button" class="nav-btn today" onclick="goToday()" data-i18n="today">今月</button>
     </div>
     <div id="gantt-header-outer"><canvas id="gantt-header-canvas"></canvas></div>
     <div id="gantt-body-outer">  <canvas id="gantt-body-canvas"></canvas></div>
@@ -465,11 +486,11 @@ th.col-filtered .filter-btn{color:#2471a3}
   <div id="bottom">
     <!-- Task editor: 担当者 → Tool → タスク名 → 開始日 → 終了日 → ステータス → メモ -->
     <section id="editor-section" class="panel">
-      <div class="panel-hdr"><span class="flex">タスク編集</span></div>
+      <div class="panel-hdr"><span class="flex" data-i18n="editor">タスク編集</span></div>
       <div class="editor-body">
         <div class="editor-row-2col">
           <div>
-            <div class="field-label">担当者</div>
+            <div class="field-label" data-i18n="f_assignee">担当者</div>
             <select id="f-assignee" title="担当者"></select>
           </div>
           <div>
@@ -478,65 +499,65 @@ th.col-filtered .filter-btn{color:#2471a3}
           </div>
         </div>
 
-        <div class="field-label">タスク名 *</div>
-        <input type="text" id="f-name" placeholder="タスク名を入力">
+        <div class="field-label" data-i18n="f_name">タスク名 *</div>
+        <input type="text" id="f-name" placeholder="タスク名を入力" data-i18n="task_name_ph">
 
         <div class="editor-row-2col">
           <div>
-            <div class="field-label">依頼日</div>
+            <div class="field-label" data-i18n="f_request">依頼日</div>
             <input type="date" id="f-request" title="依頼日">
           </div>
           <div>
-            <div class="field-label">着手日 *</div>
+            <div class="field-label" data-i18n="f_start">着手日 *</div>
             <input type="date" id="f-start" title="着手日">
           </div>
         </div>
         <div class="editor-row-2col">
           <div>
-            <div class="field-label">配布日</div>
+            <div class="field-label" data-i18n="f_dist">配布日</div>
             <input type="date" id="f-dist" title="配布日">
           </div>
           <div>
-            <div class="field-label">完了日 *</div>
+            <div class="field-label" data-i18n="f_end">完了日 *</div>
             <input type="date" id="f-end" title="完了日">
           </div>
         </div>
 
         <div class="editor-row-2col">
           <div>
-            <div class="field-label">実施日</div>
+            <div class="field-label" data-i18n="f_impl">実施日</div>
             <input type="date" id="f-impl-date" title="実施日">
           </div>
           <div></div>
         </div>
 
-        <div class="field-label">メモ</div>
-        <textarea id="f-desc" placeholder="メモを入力…"></textarea>
+        <div class="field-label" data-i18n="f_memo">メモ</div>
+        <textarea id="f-desc" placeholder="メモを入力…" data-i18n="memo_ph"></textarea>
 
         <div class="btn-row">
-          <button type="button" class="btn btn-add"    id="btn-add"    onclick="addTask()">追加</button>
-          <button type="button" class="btn btn-update" id="btn-update" onclick="updateTask()" disabled>更新</button>
-          <button type="button" class="btn btn-delete" id="btn-delete" onclick="deleteTask()" disabled>削除</button>
-          <button type="button" class="btn btn-clear"                  onclick="clearTaskForm()">クリア</button>
+          <button type="button" class="btn btn-add"    id="btn-add"    onclick="addTask()"     data-i18n="btn_add">追加</button>
+          <button type="button" class="btn btn-update" id="btn-update" onclick="updateTask()" disabled data-i18n="btn_update">更新</button>
+          <button type="button" class="btn btn-delete" id="btn-delete" onclick="deleteTask()" disabled data-i18n="btn_delete">削除</button>
+          <button type="button" class="btn btn-clear"                  onclick="clearTaskForm()" data-i18n="btn_clear">クリア</button>
         </div>
       </div>
     </section>
 
     <!-- Task list: ID → 担当者 → Tool → タスク名 → 開始日 → 終了日 → ステータス → 優先度 -->
     <section id="list-section" class="panel">
-      <div class="panel-hdr"><span class="flex">タスク一覧</span></div>
+      <div class="panel-hdr"><span class="flex" data-i18n="list">タスク一覧</span></div>
       <div id="list-wrap">
         <table>
           <thead><tr>
             <th onclick="sortTaskBy('id')" data-col="id" class="col-id">ID</th>
-            <th onclick="sortTaskBy('assignee')" data-col="assignee" class="col-asgn"><div class="th-inner"><span class="col-name">担当者</span><button type="button" class="filter-btn" onclick="fpOpen(event,'assignee')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('assignee')" data-col="assignee" class="col-asgn"><div class="th-inner"><span class="col-name" data-i18n="col_assignee">担当者</span><button type="button" class="filter-btn" onclick="fpOpen(event,'assignee')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
             <th onclick="sortTaskBy('tool')" data-col="tool" class="col-tool"><div class="th-inner"><span class="col-name">Tool</span><button type="button" class="filter-btn" onclick="fpOpen(event,'tool')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
-            <th onclick="sortTaskBy('name')" data-col="name"><div class="th-inner"><span class="col-name">タスク名</span><button type="button" class="filter-btn" onclick="fpOpen(event,'name')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
-            <th onclick="sortTaskBy('implementation_date')" data-col="implementation_date" class="col-date"><div class="th-inner"><span class="col-name">実施日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'implementation_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
-            <th onclick="sortTaskBy('request_date')" data-col="request_date" class="col-date"><div class="th-inner"><span class="col-name">依頼日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'request_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
-            <th onclick="sortTaskBy('start_date')" data-col="start_date" class="col-date"><div class="th-inner"><span class="col-name">着手日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'start_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
-            <th onclick="sortTaskBy('distribution_date')" data-col="distribution_date" class="col-date"><div class="th-inner"><span class="col-name">配布日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'distribution_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
-            <th onclick="sortTaskBy('end_date')" data-col="end_date" class="col-date"><div class="th-inner"><span class="col-name">完了日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'end_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('name')" data-col="name"><div class="th-inner"><span class="col-name" data-i18n="col_name">タスク名</span><button type="button" class="filter-btn" onclick="fpOpen(event,'name')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('implementation_date')" data-col="implementation_date" class="col-date"><div class="th-inner"><span class="col-name" data-i18n="col_impl">実施日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'implementation_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('request_date')" data-col="request_date" class="col-date"><div class="th-inner"><span class="col-name" data-i18n="col_req">依頼日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'request_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('start_date')" data-col="start_date" class="col-date"><div class="th-inner"><span class="col-name" data-i18n="col_start">着手日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'start_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('distribution_date')" data-col="distribution_date" class="col-date"><div class="th-inner"><span class="col-name" data-i18n="col_dist">配布日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'distribution_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('end_date')" data-col="end_date" class="col-date"><div class="th-inner"><span class="col-name" data-i18n="col_end">完了日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'end_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
           </tr></thead>
           <tbody id="task-tbody"></tbody>
         </table>
@@ -549,31 +570,31 @@ th.col-filtered .filter-btn{color:#2471a3}
 <!-- ══════════ TOOL TAB ══════════ -->
 <div id="tab-tool" class="tab-pane">
   <section class="panel side-editor">
-    <div class="panel-hdr"><span class="flex">ツール編集</span></div>
+    <div class="panel-hdr"><span class="flex" data-i18n="tool_editor">ツール編集</span></div>
     <div class="editor-body">
-      <div class="field-label">ツール名 *</div>
-      <input type="text" id="ft-name" placeholder="例: 001_GitHub">
+      <div class="field-label" data-i18n="tool_name_label">ツール名 *</div>
+      <input type="text" id="ft-name" placeholder="例: 001_GitHub" data-i18n="tool_placeholder">
       <div class="btn-row">
-        <button type="button" class="btn btn-add"    id="t-btn-add"    onclick="addTool()">追加</button>
-        <button type="button" class="btn btn-update" id="t-btn-update" onclick="updateTool()" disabled>更新</button>
-        <button type="button" class="btn btn-delete" id="t-btn-delete" onclick="deleteTool()" disabled>削除</button>
-        <button type="button" class="btn btn-clear"                    onclick="clearToolForm()">クリア</button>
+        <button type="button" class="btn btn-add"    id="t-btn-add"    onclick="addTool()"     data-i18n="btn_add">追加</button>
+        <button type="button" class="btn btn-update" id="t-btn-update" onclick="updateTool()" disabled data-i18n="btn_update">更新</button>
+        <button type="button" class="btn btn-delete" id="t-btn-delete" onclick="deleteTool()" disabled data-i18n="btn_delete">削除</button>
+        <button type="button" class="btn btn-clear"                    onclick="clearToolForm()" data-i18n="btn_clear">クリア</button>
       </div>
     </div>
   </section>
   <section class="panel side-list">
     <div class="panel-hdr">
-      <span class="flex">ツール一覧</span>
+      <span class="flex" data-i18n="tool_list">ツール一覧</span>
       <span id="tool-count" class="badge"></span>
     </div>
     <div class="search-wrap">
-      <input type="text" id="tool-search" placeholder="🔍 ツール名で絞り込み…" oninput="renderToolList()" autocomplete="off">
+      <input type="text" id="tool-search" placeholder="🔍 ツール名で絞り込み…" data-i18n="tool_search_ph" oninput="renderToolList()" autocomplete="off">
     </div>
     <div class="scroll-list">
       <table>
         <thead><tr>
           <th onclick="sortToolBy('id')"   data-tcol="id"   class="col-tid">ID</th>
-          <th onclick="sortToolBy('name')" data-tcol="name">ツール名</th>
+          <th onclick="sortToolBy('name')" data-tcol="name" data-i18n="col_tool_name">ツール名</th>
         </tr></thead>
         <tbody id="tool-tbody"></tbody>
       </table>
@@ -584,34 +605,34 @@ th.col-filtered .filter-btn{color:#2471a3}
 <!-- ══════════ ASSIGNEE TAB ══════════ -->
 <div id="tab-assignee" class="tab-pane">
   <section class="panel side-editor">
-    <div class="panel-hdr"><span class="flex">担当者編集</span></div>
+    <div class="panel-hdr"><span class="flex" data-i18n="asgn_editor">担当者編集</span></div>
     <div class="editor-body">
-      <div class="field-label">担当者名 *</div>
-      <input type="text" id="fa-name" placeholder="担当者名を入力">
-      <div class="field-label">メールアドレス</div>
+      <div class="field-label" data-i18n="asgn_name_label">担当者名 *</div>
+      <input type="text" id="fa-name" placeholder="担当者名を入力" data-i18n="asgn_name_ph">
+      <div class="field-label" data-i18n="asgn_email_label">メールアドレス</div>
       <input type="email" id="fa-email" placeholder="email@example.com">
       <div class="btn-row">
-        <button type="button" class="btn btn-add"    id="a-btn-add"    onclick="addAssignee()">追加</button>
-        <button type="button" class="btn btn-update" id="a-btn-update" onclick="updateAssignee()" disabled>更新</button>
-        <button type="button" class="btn btn-delete" id="a-btn-delete" onclick="deleteAssignee()" disabled>削除</button>
-        <button type="button" class="btn btn-clear"                    onclick="clearAssigneeForm()">クリア</button>
+        <button type="button" class="btn btn-add"    id="a-btn-add"    onclick="addAssignee()"     data-i18n="btn_add">追加</button>
+        <button type="button" class="btn btn-update" id="a-btn-update" onclick="updateAssignee()" disabled data-i18n="btn_update">更新</button>
+        <button type="button" class="btn btn-delete" id="a-btn-delete" onclick="deleteAssignee()" disabled data-i18n="btn_delete">削除</button>
+        <button type="button" class="btn btn-clear"                    onclick="clearAssigneeForm()" data-i18n="btn_clear">クリア</button>
       </div>
     </div>
   </section>
   <section class="panel side-list">
     <div class="panel-hdr">
-      <span class="flex">担当者一覧</span>
+      <span class="flex" data-i18n="asgn_list">担当者一覧</span>
       <span id="assignee-count" class="badge"></span>
     </div>
     <div class="search-wrap">
-      <input type="text" id="assignee-search" placeholder="🔍 担当者名で絞り込み…" oninput="renderAssigneeList()" autocomplete="off">
+      <input type="text" id="assignee-search" placeholder="🔍 担当者名で絞り込み…" data-i18n="asgn_search_ph" oninput="renderAssigneeList()" autocomplete="off">
     </div>
     <div class="scroll-list">
       <table>
         <thead><tr>
           <th onclick="sortAssigneeBy('id')"   data-acol="id"   class="col-tid">ID</th>
-          <th onclick="sortAssigneeBy('name')" data-acol="name">担当者名</th>
-          <th onclick="sortAssigneeBy('email')" data-acol="email">メールアドレス</th>
+          <th onclick="sortAssigneeBy('name')" data-acol="name" data-i18n="col_asgn_name">担当者名</th>
+          <th onclick="sortAssigneeBy('email')" data-acol="email" data-i18n="col_asgn_email">メールアドレス</th>
         </tr></thead>
         <tbody id="assignee-tbody"></tbody>
       </table>
@@ -627,14 +648,14 @@ th.col-filtered .filter-btn{color:#2471a3}
     <input type="text" class="fp-search" id="fp-search" placeholder="🔍 検索…" oninput="fpRenderList()">
     <div class="fp-all">
       <input type="checkbox" id="fp-all-cb" onchange="fpToggleAll(this.checked)">
-      <label for="fp-all-cb">（すべて選択）</label>
+      <label for="fp-all-cb" data-i18n="fp_all">（すべて選択）</label>
     </div>
     <div class="fp-list" id="fp-list"></div>
   </div>
   <!-- 日付列用 -->
   <div id="fp-date-section">
     <div class="fp-today-row">
-      <button type="button" class="fp-today-btn" onclick="fpGoToday()">今日</button>
+      <button type="button" class="fp-today-btn" onclick="fpGoToday()" data-i18n="fp_today">今日</button>
     </div>
     <div class="fp-range-hint" id="fp-range-hint">開始日をクリック</div>
     <div class="fp-date-body">
@@ -650,18 +671,18 @@ th.col-filtered .filter-btn{color:#2471a3}
           <button type="button" class="fp-mc-nav" onclick="fpCalNav(1)">▶</button>
         </div>
         <div class="fp-mc-week">
-          <div class="fp-mc-wday">日</div><div class="fp-mc-wday">月</div><div class="fp-mc-wday">火</div>
-          <div class="fp-mc-wday">水</div><div class="fp-mc-wday">木</div><div class="fp-mc-wday">金</div>
-          <div class="fp-mc-wday">土</div>
+          <div class="fp-mc-wday" data-wday="0">日</div><div class="fp-mc-wday" data-wday="1">月</div><div class="fp-mc-wday" data-wday="2">火</div>
+          <div class="fp-mc-wday" data-wday="3">水</div><div class="fp-mc-wday" data-wday="4">木</div><div class="fp-mc-wday" data-wday="5">金</div>
+          <div class="fp-mc-wday" data-wday="6">土</div>
         </div>
         <div class="fp-mc-days" id="fp-mc-days"></div>
       </div>
     </div>
   </div>
   <div class="fp-btns">
-    <button type="button" class="fp-btn fp-clear"  onclick="fpClear()">クリア</button>
-    <button type="button" class="fp-btn fp-cancel" onclick="fpClose()">キャンセル</button>
-    <button type="button" class="fp-btn fp-ok"     onclick="fpApply()">OK</button>
+    <button type="button" class="fp-btn fp-clear"  onclick="fpClear()"  data-i18n="fp_clear">クリア</button>
+    <button type="button" class="fp-btn fp-cancel" onclick="fpClose()"  data-i18n="fp_cancel">キャンセル</button>
+    <button type="button" class="fp-btn fp-ok"     onclick="fpApply()"  data-i18n="fp_ok">OK</button>
   </div>
 </div>
 
@@ -677,6 +698,7 @@ let assigneeList   = [];
 let selectedTaskId     = null;
 let selectedToolId     = null;
 let selectedAssigneeId = null;
+let _lang = localStorage.getItem("tf_lang") || "ja";
 
 // ── Column filter ─────────────────────────────────────
 const TASK_COLS = [
@@ -708,7 +730,7 @@ const NAME_W  = 212;
 const WDAY_W  = 44;
 const LABEL_W = ASGN_W + TOOL_W + NAME_W + WDAY_W;  // 352
 const DAY_W = 24, TASK_H = 30, PAD = 6, HDR_H = 58;
-const DOW_JP = ["","月","火","水","木","金"];
+let DOW_JP = ["","月","火","水","木","金"];
 
 /* ═══════════════════════════════════════════════
    Tab switching
@@ -743,9 +765,9 @@ function refreshDataLists() {
   const asgnSel  = document.getElementById("f-assignee");
   const curTool  = toolSel.value;
   const curAsgn  = asgnSel.value;
-  toolSel.innerHTML  = '<option value="">-- なし --</option>' +
+  toolSel.innerHTML  = `<option value="">-- ${T("none")} --</option>` +
     toolList.map(t  => `<option value="${esc(t.name)}">${esc(t.name)}</option>`).join("");
-  asgnSel.innerHTML  = '<option value="">-- なし --</option>' +
+  asgnSel.innerHTML  = `<option value="">-- ${T("none")} --</option>` +
     assigneeList.map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join("");
   toolSel.value  = curTool;
   asgnSel.value  = curAsgn;
@@ -762,26 +784,26 @@ async function loadTools() {
 
 async function addTool() {
   const name = document.getElementById("ft-name").value.trim();
-  if (!name) { toast("ツール名を入力してください"); return; }
+  if (!name) { toast(T("val_tool")); return; }
   const t = await api("/api/tools", {method:"POST",body:{name}});
   toolList.push(t); clearToolForm(); renderToolList(); refreshDataLists(); updateToolFilter();
-  toast("ツールを追加しました");
+  toast(T("msg_add_tool"));
 }
 async function updateTool() {
   if (!selectedToolId) return;
   const name = document.getElementById("ft-name").value.trim();
-  if (!name) { toast("ツール名を入力してください"); return; }
+  if (!name) { toast(T("val_tool")); return; }
   const t = await api(`/api/tools/${selectedToolId}`, {method:"PUT",body:{name}});
   toolList = toolList.map(x => x.id===selectedToolId ? t : x);
-  renderToolList(); refreshDataLists(); updateToolFilter(); toast("ツールを更新しました");
+  renderToolList(); refreshDataLists(); updateToolFilter(); toast(T("msg_upd_tool"));
 }
 async function deleteTool() {
   if (!selectedToolId) return;
   const nm = toolList.find(t=>t.id===selectedToolId)?.name||"";
-  if (!confirm(`「${nm}」を削除しますか？`)) return;
+  if (!confirm(T("confirm_del_tool").replace("{name}",nm))) return;
   await api(`/api/tools/${selectedToolId}`,{method:"DELETE"});
   toolList = toolList.filter(t=>t.id!==selectedToolId);
-  clearToolForm(); renderToolList(); refreshDataLists(); updateToolFilter(); toast("ツールを削除しました");
+  clearToolForm(); renderToolList(); refreshDataLists(); updateToolFilter(); toast(T("msg_del_tool"));
 }
 function selectTool(id) {
   selectedToolId = id;
@@ -817,7 +839,7 @@ function renderToolList() {
     return toolSortAsc?(va<vb?-1:va>vb?1:0):(va<vb?1:va>vb?-1:0);
   });
   document.getElementById("tool-count").textContent =
-    q ? `${list.length}/${toolList.length}` : `${toolList.length}件`;
+    q ? `${list.length}/${toolList.length}` : T("count_items").replace("{n}",toolList.length);
   const tbody = document.getElementById("tool-tbody");
   tbody.innerHTML = "";
   for (const t of list) {
@@ -860,27 +882,27 @@ async function loadAssignees() {
 async function addAssignee() {
   const name  = document.getElementById("fa-name").value.trim();
   const email = document.getElementById("fa-email").value.trim();
-  if (!name) { toast("担当者名を入力してください"); return; }
+  if (!name) { toast(T("val_asgn")); return; }
   const a = await api("/api/assignees",{method:"POST",body:{name,email}});
   assigneeList.push(a); clearAssigneeForm(); renderAssigneeList(); refreshDataLists(); updateAssigneeFilter();
-  toast("担当者を追加しました");
+  toast(T("msg_add_asgn"));
 }
 async function updateAssignee() {
   if (!selectedAssigneeId) return;
   const name  = document.getElementById("fa-name").value.trim();
   const email = document.getElementById("fa-email").value.trim();
-  if (!name) { toast("担当者名を入力してください"); return; }
+  if (!name) { toast(T("val_asgn")); return; }
   const a = await api(`/api/assignees/${selectedAssigneeId}`,{method:"PUT",body:{name,email}});
   assigneeList = assigneeList.map(x=>x.id===selectedAssigneeId?a:x);
-  renderAssigneeList(); refreshDataLists(); updateAssigneeFilter(); toast("担当者を更新しました");
+  renderAssigneeList(); refreshDataLists(); updateAssigneeFilter(); toast(T("msg_upd_asgn"));
 }
 async function deleteAssignee() {
   if (!selectedAssigneeId) return;
   const nm = assigneeList.find(a=>a.id===selectedAssigneeId)?.name||"";
-  if (!confirm(`「${nm}」を削除しますか？`)) return;
+  if (!confirm(T("confirm_del_asgn").replace("{name}",nm))) return;
   await api(`/api/assignees/${selectedAssigneeId}`,{method:"DELETE"});
   assigneeList = assigneeList.filter(a=>a.id!==selectedAssigneeId);
-  clearAssigneeForm(); renderAssigneeList(); refreshDataLists(); updateAssigneeFilter(); toast("担当者を削除しました");
+  clearAssigneeForm(); renderAssigneeList(); refreshDataLists(); updateAssigneeFilter(); toast(T("msg_del_asgn"));
 }
 function selectAssignee(id) {
   selectedAssigneeId = id;
@@ -920,7 +942,7 @@ function renderAssigneeList() {
     return assigneeSortAsc?(va<vb?-1:va>vb?1:0):(va<vb?1:va>vb?-1:0);
   });
   document.getElementById("assignee-count").textContent =
-    q ? `${list.length}/${assigneeList.length}` : `${assigneeList.length}件`;
+    q ? `${list.length}/${assigneeList.length}` : T("count_items").replace("{n}",assigneeList.length);
   const tbody = document.getElementById("assignee-tbody");
   tbody.innerHTML = "";
   for (const a of list) {
@@ -955,10 +977,10 @@ function taskFormValues() {
   };
 }
 function validateTask(v) {
-  if (!v.name)     {toast("タスク名を入力してください");return false;}
-  if (!v.start_date){toast("着手日を入力してください"); return false;}
-  if (!v.end_date)  {toast("完了日を入力してください"); return false;}
-  if (v.end_date<v.start_date){toast("完了日は着手日以降にしてください");return false;}
+  if (!v.name)     {toast(T("val_name"));return false;}
+  if (!v.start_date){toast(T("val_start")); return false;}
+  if (!v.end_date)  {toast(T("val_end")); return false;}
+  if (v.end_date<v.start_date){toast(T("val_end_range"));return false;}
   return true;
 }
 async function addTask() {
@@ -966,29 +988,45 @@ async function addTask() {
   const t=await api("/api/tasks",{method:"POST",body:v});
   if(t.error){
     if(t.error==="plan_limit"){
-      if(confirm(t.message+"\n\nProプランのページを開きますか？")){location.href="/pricing";}
+      if(confirm(T("confirm_upgrade"))){location.href="/pricing";}
     } else {
-      toast(t.message||"エラーが発生しました");
+      toast(t.message||T("err_generic"));
     }
     return;
   }
-  tasks.push(t); clearTaskForm(); renderTaskList(); drawGantt(); toast("タスクを追加しました");
+  tasks.push(t); clearTaskForm(); renderTaskList(); drawGantt(); toast(T("msg_add_task"));
+}
+function beepComplete() {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    [[880,0,0.12],[1100,0.13,0.12],[1320,0.27,0.18]].forEach(([freq,start,dur])=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value=freq; o.type="sine";
+      g.gain.setValueAtTime(0,ctx.currentTime+start);
+      g.gain.linearRampToValueAtTime(0.25,ctx.currentTime+start+0.02);
+      g.gain.linearRampToValueAtTime(0,ctx.currentTime+start+dur);
+      o.start(ctx.currentTime+start); o.stop(ctx.currentTime+start+dur+0.05);
+    });
+  } catch(e){}
 }
 async function updateTask() {
   if(!selectedTaskId)return;
+  const prev=tasks.find(x=>x.id===selectedTaskId);
   const v=taskFormValues(); if(!validateTask(v))return;
   const t=await api(`/api/tasks/${selectedTaskId}`,{method:"PUT",body:v});
-  if(t.error){toast(t.message||"エラーが発生しました");return;}
+  if(t.error){toast(t.message||T("err_generic"));return;}
   tasks=tasks.map(x=>x.id===selectedTaskId?t:x);
-  renderTaskList(); drawGantt(); toast("タスクを更新しました");
+  if(t.status==="完了" && prev?.status!=="完了") beepComplete();
+  renderTaskList(); drawGantt(); toast(T("msg_upd_task"));
 }
 async function deleteTask() {
   if(!selectedTaskId)return;
   const nm=tasks.find(t=>t.id===selectedTaskId)?.name||"";
-  if(!confirm(`「${nm}」を削除しますか？`))return;
+  if(!confirm(T("confirm_del_task").replace("{name}",nm)))return;
   await api(`/api/tasks/${selectedTaskId}`,{method:"DELETE"});
   tasks=tasks.filter(t=>t.id!==selectedTaskId);
-  clearTaskForm(); renderTaskList(); drawGantt(); toast("タスクを削除しました");
+  clearTaskForm(); renderTaskList(); drawGantt(); toast(T("msg_del_task"));
 }
 function clearTaskForm() {
   const today=new Date().toISOString().slice(0,10);
@@ -1125,7 +1163,7 @@ function sortedTasks() {
 function renderTaskList() {
   const list=sortedTasks();
   const countEl=document.getElementById("task-count");
-  if(countEl) countEl.textContent=list.length<tasks.length?`${list.length}/${tasks.length}件`:`${tasks.length}件`;
+  if(countEl) countEl.textContent=list.length<tasks.length?`${list.length}/${tasks.length}`:T("count_items").replace("{n}",tasks.length);
   const tbody=document.getElementById("task-tbody");
   tbody.innerHTML="";
   for(const t of list){
@@ -1366,8 +1404,14 @@ function prevMonth(){viewDate.setMonth(viewDate.getMonth()-1);updateMonthLabel()
 function nextMonth(){viewDate.setMonth(viewDate.getMonth()+1);updateMonthLabel();drawGantt();}
 function goToday(){viewDate=new Date();viewDate.setDate(1);updateMonthLabel();drawGantt();closeMonthPicker();}
 function updateMonthLabel(){
-  document.getElementById("month-label").textContent=
-    `${viewDate.getFullYear()}年${viewDate.getMonth()+1}月`;
+  const y=viewDate.getFullYear(), m=viewDate.getMonth()+1;
+  let label;
+  if(_lang==="ko") label=`${y}년 ${m}월`;
+  else if(_lang==="en"){const mn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m-1];label=`${mn} ${y}`;}
+  else if(_lang==="es"){const mn=["Ene","Feb","Mar","Abr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dic"][m-1];label=`${mn} ${y}`;}
+  else if(_lang==="fr"){const mn=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][m-1];label=`${mn} ${y}`;}
+  else label=`${y}年${m}月`;
+  document.getElementById("month-label").textContent=label;
 }
 
 /* ── Month picker ─────────────────────────────────── */
@@ -1405,11 +1449,14 @@ function renderPickerYearStrip() {
 }
 function renderPickerMonthGrid() {
   const curY = viewDate.getFullYear(), curM = viewDate.getMonth() + 1;
+  const _LD=typeof LANG_DATA!=="undefined"?LANG_DATA:null;
+  const _LM=(_LD&&(_LD[_lang]||_LD.ja)?.months)||null;
   document.getElementById("picker-month-grid").innerHTML =
     Array.from({length:12}, (_,i) => {
       const m = i + 1;
       const isCur = _pickerYear === curY && m === curM;
-      return `<div class="mgb${isCur?' cur':''}" onclick="selectPickerMonth(${m})">${m}月</div>`;
+      const lbl = _LM ? _LM[i] : `${m}月`;
+      return `<div class="mgb${isCur?' cur':''}" onclick="selectPickerMonth(${m})">${lbl}</div>`;
     }).join('');
 }
 function selectPickerYear(y) {
@@ -1728,12 +1775,280 @@ document.addEventListener("click", e=>{
 updateMonthLabel();
 clearTaskForm(); clearToolForm(); clearAssigneeForm();
 
-Promise.all([loadTools(), loadAssignees()]).then(()=>{
+window.addEventListener("resize", drawGantt);
+
+/* ═══════════════════════════════════════════════
+   i18n
+═══════════════════════════════════════════════ */
+const LANG_DATA = {
+  ja:{
+    tab_task:"タスク",tab_tool:"ツール",tab_assignee:"担当者",
+    upgrade:"アップグレード",logout:"ログアウト",
+    filter:"フィルタ",filter_name:"タスク名",filter_status:"ステータス",
+    all:"全",clr:"解",gantt:"ガントチャート",today:"今月",
+    editor:"タスク編集",
+    f_assignee:"担当者",f_name:"タスク名 *",f_request:"依頼日",f_start:"着手日 *",
+    f_dist:"配布日",f_end:"完了日 *",f_impl:"実施日",f_memo:"メモ",
+    btn_add:"追加",btn_update:"更新",btn_delete:"削除",btn_clear:"クリア",
+    list:"タスク一覧",
+    col_assignee:"担当者",col_name:"タスク名",col_impl:"実施日",col_req:"依頼日",
+    col_start:"着手日",col_dist:"配布日",col_end:"完了日",
+    tool_editor:"ツール編集",tool_name_label:"ツール名 *",tool_placeholder:"例: 001_GitHub",
+    tool_list:"ツール一覧",col_tool_name:"ツール名",
+    asgn_editor:"担当者編集",asgn_name_label:"担当者名 *",asgn_name_ph:"担当者名を入力",
+    asgn_email_label:"メールアドレス",asgn_list:"担当者一覧",
+    col_asgn_name:"担当者名",col_asgn_email:"メールアドレス",
+    fp_all:"（すべて選択）",fp_today:"今日",fp_clear:"クリア",fp_cancel:"キャンセル",fp_ok:"OK",
+    search_ph:"🔍 検索…",tool_search_ph:"🔍 ツール名で絞り込み…",asgn_search_ph:"🔍 担当者名で絞り込み…",
+    task_name_ph:"タスク名を入力",memo_ph:"メモを入力…",none:"なし",
+    msg_add_task:"タスクを追加しました",msg_upd_task:"タスクを更新しました",msg_del_task:"タスクを削除しました",
+    msg_add_tool:"ツールを追加しました",msg_upd_tool:"ツールを更新しました",msg_del_tool:"ツールを削除しました",
+    msg_add_asgn:"担当者を追加しました",msg_upd_asgn:"担当者を更新しました",msg_del_asgn:"担当者を削除しました",
+    val_name:"タスク名を入力してください",val_start:"着手日を入力してください",
+    val_end:"完了日を入力してください",val_end_range:"完了日は着手日以降にしてください",
+    val_tool:"ツール名を入力してください",val_asgn:"担当者名を入力してください",
+    err_generic:"エラーが発生しました",
+    confirm_del_task:'「{name}」を削除しますか？',confirm_del_tool:'「{name}」を削除しますか？',confirm_del_asgn:'「{name}」を削除しますか？',
+    confirm_upgrade:"プラン上限に達しました。\n\nProプランのページを開きますか？",
+    count_items:"{n}件",
+    wday:["日","月","火","水","木","金","土"],
+    months:["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
+    st_todo:"未着手",st_wip:"進行中",st_done:"完了",st_hold:"保留",
+  },
+  en:{
+    tab_task:"Tasks",tab_tool:"Tools",tab_assignee:"Assignees",
+    upgrade:"Upgrade",logout:"Logout",
+    filter:"Filter",filter_name:"Task Name",filter_status:"Status",
+    all:"All",clr:"None",gantt:"Gantt Chart",today:"This Month",
+    editor:"Task Editor",
+    f_assignee:"Assignee",f_name:"Task Name *",f_request:"Requested",f_start:"Start *",
+    f_dist:"Dist.",f_end:"End *",f_impl:"Impl. Date",f_memo:"Notes",
+    btn_add:"Add",btn_update:"Update",btn_delete:"Delete",btn_clear:"Clear",
+    list:"Task List",
+    col_assignee:"Assignee",col_name:"Task Name",col_impl:"Impl. Date",col_req:"Requested",
+    col_start:"Start",col_dist:"Dist.",col_end:"End",
+    tool_editor:"Tool Editor",tool_name_label:"Tool Name *",tool_placeholder:"e.g. 001_GitHub",
+    tool_list:"Tool List",col_tool_name:"Tool Name",
+    asgn_editor:"Assignee Editor",asgn_name_label:"Name *",asgn_name_ph:"Enter name",
+    asgn_email_label:"Email",asgn_list:"Assignee List",
+    col_asgn_name:"Name",col_asgn_email:"Email",
+    fp_all:"(Select All)",fp_today:"Today",fp_clear:"Clear",fp_cancel:"Cancel",fp_ok:"OK",
+    search_ph:"🔍 Search…",tool_search_ph:"🔍 Filter by tool name…",asgn_search_ph:"🔍 Filter by name…",
+    task_name_ph:"Enter task name",memo_ph:"Enter notes…",none:"None",
+    msg_add_task:"Task added",msg_upd_task:"Task updated",msg_del_task:"Task deleted",
+    msg_add_tool:"Tool added",msg_upd_tool:"Tool updated",msg_del_tool:"Tool deleted",
+    msg_add_asgn:"Assignee added",msg_upd_asgn:"Assignee updated",msg_del_asgn:"Assignee deleted",
+    val_name:"Please enter a task name",val_start:"Please enter a start date",
+    val_end:"Please enter an end date",val_end_range:"End date must be after start date",
+    val_tool:"Please enter a tool name",val_asgn:"Please enter a name",
+    err_generic:"An error occurred",
+    confirm_del_task:'Delete "{name}"?',confirm_del_tool:'Delete "{name}"?',confirm_del_asgn:'Delete "{name}"?',
+    confirm_upgrade:"You have reached the plan limit.\n\nOpen the Pro plan page?",
+    count_items:"{n} items",
+    wday:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],
+    months:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+    st_todo:"Not Started",st_wip:"In Progress",st_done:"Done",st_hold:"On Hold",
+  },
+  zh:{
+    tab_task:"任务",tab_tool:"工具",tab_assignee:"负责人",
+    upgrade:"升级",logout:"退出",
+    filter:"筛选",filter_name:"任务名",filter_status:"状态",
+    all:"全选",clr:"清除",gantt:"甘特图",today:"本月",
+    editor:"任务编辑",
+    f_assignee:"负责人",f_name:"任务名 *",f_request:"请求日",f_start:"开始日 *",
+    f_dist:"分发日",f_end:"完成日 *",f_impl:"实施日",f_memo:"备注",
+    btn_add:"添加",btn_update:"更新",btn_delete:"删除",btn_clear:"清除",
+    list:"任务列表",
+    col_assignee:"负责人",col_name:"任务名",col_impl:"实施日",col_req:"请求日",
+    col_start:"开始日",col_dist:"分发日",col_end:"完成日",
+    tool_editor:"工具编辑",tool_name_label:"工具名 *",tool_placeholder:"例: 001_GitHub",
+    tool_list:"工具列表",col_tool_name:"工具名",
+    asgn_editor:"负责人编辑",asgn_name_label:"姓名 *",asgn_name_ph:"请输入姓名",
+    asgn_email_label:"电子邮件",asgn_list:"负责人列表",
+    col_asgn_name:"姓名",col_asgn_email:"电子邮件",
+    fp_all:"（全选）",fp_today:"今天",fp_clear:"清除",fp_cancel:"取消",fp_ok:"确定",
+    search_ph:"🔍 搜索…",tool_search_ph:"🔍 按工具名筛选…",asgn_search_ph:"🔍 按姓名筛选…",
+    task_name_ph:"请输入任务名",memo_ph:"请输入备注…",none:"无",
+    msg_add_task:"任务已添加",msg_upd_task:"任务已更新",msg_del_task:"任务已删除",
+    msg_add_tool:"工具已添加",msg_upd_tool:"工具已更新",msg_del_tool:"工具已删除",
+    msg_add_asgn:"负责人已添加",msg_upd_asgn:"负责人已更新",msg_del_asgn:"负责人已删除",
+    val_name:"请输入任务名",val_start:"请输入开始日期",
+    val_end:"请输入完成日期",val_end_range:"完成日期必须晚于开始日期",
+    val_tool:"请输入工具名",val_asgn:"请输入姓名",
+    err_generic:"发生错误",
+    confirm_del_task:'删除"{name}"？',confirm_del_tool:'删除"{name}"？',confirm_del_asgn:'删除"{name}"？',
+    confirm_upgrade:"已达到计划上限。\n\n打开Pro计划页面？",
+    count_items:"{n}件",
+    wday:["日","一","二","三","四","五","六"],
+    months:["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
+    st_todo:"未开始",st_wip:"进行中",st_done:"完成",st_hold:"暂停",
+  },
+  ko:{
+    tab_task:"작업",tab_tool:"도구",tab_assignee:"담당자",
+    upgrade:"업그레이드",logout:"로그아웃",
+    filter:"필터",filter_name:"작업명",filter_status:"상태",
+    all:"전체",clr:"해제",gantt:"간트 차트",today:"이번 달",
+    editor:"작업 편집",
+    f_assignee:"담당자",f_name:"작업명 *",f_request:"요청일",f_start:"시작일 *",
+    f_dist:"배포일",f_end:"완료일 *",f_impl:"실시일",f_memo:"메모",
+    btn_add:"추가",btn_update:"업데이트",btn_delete:"삭제",btn_clear:"초기화",
+    list:"작업 목록",
+    col_assignee:"담당자",col_name:"작업명",col_impl:"실시일",col_req:"요청일",
+    col_start:"시작일",col_dist:"배포일",col_end:"완료일",
+    tool_editor:"도구 편집",tool_name_label:"도구명 *",tool_placeholder:"예: 001_GitHub",
+    tool_list:"도구 목록",col_tool_name:"도구명",
+    asgn_editor:"담당자 편집",asgn_name_label:"이름 *",asgn_name_ph:"이름을 입력하세요",
+    asgn_email_label:"이메일",asgn_list:"담당자 목록",
+    col_asgn_name:"이름",col_asgn_email:"이메일",
+    fp_all:"（모두 선택）",fp_today:"오늘",fp_clear:"초기화",fp_cancel:"취소",fp_ok:"확인",
+    search_ph:"🔍 검색…",tool_search_ph:"🔍 도구명으로 필터…",asgn_search_ph:"🔍 이름으로 필터…",
+    task_name_ph:"작업명을 입력하세요",memo_ph:"메모를 입력하세요…",none:"없음",
+    msg_add_task:"작업이 추가되었습니다",msg_upd_task:"작업이 업데이트되었습니다",msg_del_task:"작업이 삭제되었습니다",
+    msg_add_tool:"도구가 추가되었습니다",msg_upd_tool:"도구가 업데이트되었습니다",msg_del_tool:"도구가 삭제되었습니다",
+    msg_add_asgn:"담당자가 추가되었습니다",msg_upd_asgn:"담당자가 업데이트되었습니다",msg_del_asgn:"담당자가 삭제되었습니다",
+    val_name:"작업명을 입력하세요",val_start:"시작일을 입력하세요",
+    val_end:"완료일을 입력하세요",val_end_range:"완료일은 시작일 이후여야 합니다",
+    val_tool:"도구명을 입력하세요",val_asgn:"이름을 입력하세요",
+    err_generic:"오류가 발생했습니다",
+    confirm_del_task:'「{name}」을(를) 삭제하시겠습니까？',confirm_del_tool:'「{name}」을(를) 삭제하시겠습니까？',confirm_del_asgn:'「{name}」을(를) 삭제하시겠습니까？',
+    confirm_upgrade:"플랜 한도에 도달했습니다.\n\nPro 플랜 페이지를 여시겠습니까？",
+    count_items:"{n}건",
+    wday:["일","월","화","수","목","금","토"],
+    months:["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"],
+    st_todo:"미시작",st_wip:"진행 중",st_done:"완료",st_hold:"보류",
+  },
+  es:{
+    tab_task:"Tareas",tab_tool:"Herramientas",tab_assignee:"Responsables",
+    upgrade:"Actualizar",logout:"Cerrar sesión",
+    filter:"Filtro",filter_name:"Nombre de tarea",filter_status:"Estado",
+    all:"Todo",clr:"Limpiar",gantt:"Diagrama de Gantt",today:"Este mes",
+    editor:"Editor de tareas",
+    f_assignee:"Responsable",f_name:"Nombre *",f_request:"Solicitado",f_start:"Inicio *",
+    f_dist:"Dist.",f_end:"Fin *",f_impl:"Impl.",f_memo:"Notas",
+    btn_add:"Agregar",btn_update:"Actualizar",btn_delete:"Eliminar",btn_clear:"Limpiar",
+    list:"Lista de tareas",
+    col_assignee:"Responsable",col_name:"Nombre de tarea",col_impl:"Impl.",col_req:"Solicitado",
+    col_start:"Inicio",col_dist:"Dist.",col_end:"Fin",
+    tool_editor:"Editor de herramientas",tool_name_label:"Nombre *",tool_placeholder:"ej. 001_GitHub",
+    tool_list:"Lista de herramientas",col_tool_name:"Nombre",
+    asgn_editor:"Editor de responsables",asgn_name_label:"Nombre *",asgn_name_ph:"Ingrese nombre",
+    asgn_email_label:"Correo electrónico",asgn_list:"Lista de responsables",
+    col_asgn_name:"Nombre",col_asgn_email:"Correo",
+    fp_all:"(Seleccionar todo)",fp_today:"Hoy",fp_clear:"Limpiar",fp_cancel:"Cancelar",fp_ok:"OK",
+    search_ph:"🔍 Buscar…",tool_search_ph:"🔍 Filtrar por herramienta…",asgn_search_ph:"🔍 Filtrar por nombre…",
+    task_name_ph:"Ingrese nombre de tarea",memo_ph:"Ingrese notas…",none:"Ninguno",
+    msg_add_task:"Tarea agregada",msg_upd_task:"Tarea actualizada",msg_del_task:"Tarea eliminada",
+    msg_add_tool:"Herramienta agregada",msg_upd_tool:"Herramienta actualizada",msg_del_tool:"Herramienta eliminada",
+    msg_add_asgn:"Responsable agregado",msg_upd_asgn:"Responsable actualizado",msg_del_asgn:"Responsable eliminado",
+    val_name:"Ingrese un nombre de tarea",val_start:"Ingrese una fecha de inicio",
+    val_end:"Ingrese una fecha de fin",val_end_range:"La fecha de fin debe ser después del inicio",
+    val_tool:"Ingrese un nombre de herramienta",val_asgn:"Ingrese un nombre",
+    err_generic:"Ocurrió un error",
+    confirm_del_task:'¿Eliminar "{name}"?',confirm_del_tool:'¿Eliminar "{name}"?',confirm_del_asgn:'¿Eliminar "{name}"?',
+    confirm_upgrade:"Ha alcanzado el límite del plan.\n\n¿Abrir la página del plan Pro?",
+    count_items:"{n} elementos",
+    wday:["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"],
+    months:["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"],
+    st_todo:"Pendiente",st_wip:"En progreso",st_done:"Completado",st_hold:"En espera",
+  },
+  fr:{
+    tab_task:"Tâches",tab_tool:"Outils",tab_assignee:"Responsables",
+    upgrade:"Mettre à niveau",logout:"Déconnexion",
+    filter:"Filtres",filter_name:"Nom de tâche",filter_status:"Statut",
+    all:"Tout",clr:"Effacer",gantt:"Diagramme de Gantt",today:"Ce mois",
+    editor:"Éditeur de tâches",
+    f_assignee:"Responsable",f_name:"Nom *",f_request:"Demandé",f_start:"Début *",
+    f_dist:"Distrib.",f_end:"Fin *",f_impl:"Impl.",f_memo:"Notes",
+    btn_add:"Ajouter",btn_update:"Mettre à jour",btn_delete:"Supprimer",btn_clear:"Réinitialiser",
+    list:"Liste des tâches",
+    col_assignee:"Responsable",col_name:"Nom de tâche",col_impl:"Impl.",col_req:"Demandé",
+    col_start:"Début",col_dist:"Distrib.",col_end:"Fin",
+    tool_editor:"Éditeur d'outils",tool_name_label:"Nom *",tool_placeholder:"ex: 001_GitHub",
+    tool_list:"Liste des outils",col_tool_name:"Nom",
+    asgn_editor:"Éditeur de responsables",asgn_name_label:"Nom *",asgn_name_ph:"Entrez le nom",
+    asgn_email_label:"E-mail",asgn_list:"Liste des responsables",
+    col_asgn_name:"Nom",col_asgn_email:"E-mail",
+    fp_all:"(Tout sélectionner)",fp_today:"Aujourd'hui",fp_clear:"Effacer",fp_cancel:"Annuler",fp_ok:"OK",
+    search_ph:"🔍 Rechercher…",tool_search_ph:"🔍 Filtrer par outil…",asgn_search_ph:"🔍 Filtrer par nom…",
+    task_name_ph:"Entrez le nom de la tâche",memo_ph:"Entrez des notes…",none:"Aucun",
+    msg_add_task:"Tâche ajoutée",msg_upd_task:"Tâche mise à jour",msg_del_task:"Tâche supprimée",
+    msg_add_tool:"Outil ajouté",msg_upd_tool:"Outil mis à jour",msg_del_tool:"Outil supprimé",
+    msg_add_asgn:"Responsable ajouté",msg_upd_asgn:"Responsable mis à jour",msg_del_asgn:"Responsable supprimé",
+    val_name:"Veuillez saisir un nom de tâche",val_start:"Veuillez saisir une date de début",
+    val_end:"Veuillez saisir une date de fin",val_end_range:"La date de fin doit être après le début",
+    val_tool:"Veuillez saisir un nom d'outil",val_asgn:"Veuillez saisir un nom",
+    err_generic:"Une erreur est survenue",
+    confirm_del_task:'Supprimer "{name}" ?',confirm_del_tool:'Supprimer "{name}" ?',confirm_del_asgn:'Supprimer "{name}" ?',
+    confirm_upgrade:"Vous avez atteint la limite du plan.\n\nOuvrir la page du plan Pro ?",
+    count_items:"{n} éléments",
+    wday:["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"],
+    months:["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"],
+    st_todo:"À faire",st_wip:"En cours",st_done:"Terminé",st_hold:"En attente",
+  },
+};
+function T(k){ return (LANG_DATA[_lang]||LANG_DATA.ja)[k] || k; }
+function tStatus(s){
+  const m={"未着手":"st_todo","進行中":"st_wip","完了":"st_done","保留":"st_hold"};
+  return T(m[s]||s);
+}
+function applyLang() {
+  const L = LANG_DATA[_lang]||LANG_DATA.ja;
+  document.documentElement.lang = _lang;
+  // Static i18n elements
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k=el.dataset.i18n;
+    if(el.tagName==="INPUT"||el.tagName==="TEXTAREA"){
+      el.placeholder=L[k]||k;
+    } else {
+      el.textContent=L[k]||k;
+    }
+  });
+  // Status filter labels
+  document.querySelectorAll("#filter-status-list .sb-item span[data-st]").forEach(el=>{
+    el.textContent=tStatus(el.dataset.st);
+  });
+  // Filter popup weekdays
+  const wday=L.wday||["日","月","火","水","木","金","土"];
+  document.querySelectorAll(".fp-mc-wday[data-wday]").forEach(el=>{
+    el.textContent=wday[+el.dataset.wday];
+  });
+  // Update DOW_JP for gantt
+  DOW_JP.length=0;
+  DOW_JP.push("",...[wday[1],wday[2],wday[3],wday[4],wday[5]]);
+  // Re-render dynamic parts
+  updateMonthLabel();
+  renderPickerMonthGrid && renderPickerMonthGrid();
+  refreshDataLists();
+  renderTaskList();
+  renderToolList();
+  renderAssigneeList();
+  updateToolFilter();
+  updateAssigneeFilter();
+  drawGantt();
+  // Active lang button
+  document.querySelectorAll(".lang-opt").forEach(el=>
+    el.classList.toggle("active",el.dataset.lang===_lang));
+}
+function setLang(lang){
+  _lang=lang;
+  localStorage.setItem("tf_lang",lang);
+  document.getElementById("lang-menu")?.classList.remove("open");
+  applyLang();
+}
+function toggleLangMenu(){
+  document.getElementById("lang-menu")?.classList.toggle("open");
+}
+document.addEventListener("click",e=>{
+  const sw=document.getElementById("lang-switcher");
+  if(sw&&!sw.contains(e.target))
+    document.getElementById("lang-menu")?.classList.remove("open");
+});
+// Init i18n after data loaded
+Promise.all([loadTools(),loadAssignees()]).then(()=>{
   refreshDataLists();
   loadTasks();
+  applyLang();
 });
-
-window.addEventListener("resize", drawGantt);
 </script>
 </body>
 </html>
