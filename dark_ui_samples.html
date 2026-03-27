@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ダークUIサンプル</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI","Meiryo",sans-serif;font-size:13px;background:#111;color:#eee;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── テーマ選択バー ── */
+#theme-bar{
+  display:flex;align-items:center;gap:2px;padding:0 16px;height:48px;
+  background:#1a1a1a;border-bottom:1px solid #333;flex-shrink:0;
+}
+#theme-bar span{color:#666;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-right:8px}
+.th-tab{
+  padding:6px 18px;border-radius:20px;border:1px solid transparent;
+  font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;background:none;color:#666;
+}
+.th-tab:hover{color:#ccc}
+.th-tab.active{border-color:currentColor}
+
+/* ── フレームコンテナ ── */
+#frames{flex:1;min-height:0;position:relative}
+.frame{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden}
+.frame.active{display:flex}
+
+/* ══════════════════════════════════════
+   共通レイアウト構造
+══════════════════════════════════════ */
+.f-tabbar{height:44px;display:flex;align-items:center;padding:0 14px;gap:2px;flex-shrink:0}
+.f-tab{height:44px;padding:0 18px;border:none;background:transparent;cursor:pointer;font-size:13px;font-weight:700;border-bottom:3px solid transparent;transition:all .15s}
+.f-main{flex:1;min-height:0;display:flex;flex-direction:row;overflow:hidden}
+
+/* サイドバー */
+.f-sidebar{width:150px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
+.f-sb-hdr{height:42px;display:flex;align-items:center;padding:0 12px;justify-content:space-between;flex-shrink:0;font-size:12px;font-weight:700;border-bottom:1px solid}
+.f-sb-section{padding:10px 12px 8px;border-bottom:1px solid;flex-shrink:0}
+.f-sb-title{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:700}
+.f-sb-item{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px}
+.f-sb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.f-sb-search{width:100%;border-radius:4px;padding:4px 7px;font-size:11px;outline:none;margin-top:4px}
+.f-sb-chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin:2px 2px 0 0}
+
+/* メインコンテンツ */
+.f-content{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;padding:8px 10px 10px;gap:8px}
+
+/* ガントプレースホルダー */
+.f-gantt{border-radius:8px;overflow:hidden;flex-shrink:0;height:120px;display:flex;flex-direction:column}
+.f-gantt-hdr{height:40px;display:flex;align-items:center;padding:0 14px;gap:8px;flex-shrink:0;font-size:13px;font-weight:700}
+.f-gantt-body{flex:1;position:relative;overflow:hidden}
+.f-gantt-bar{position:absolute;height:14px;border-radius:3px;top:12px}
+.f-gantt-bar2{position:absolute;height:14px;border-radius:3px;top:32px}
+.f-gantt-bar3{position:absolute;height:14px;border-radius:3px;top:52px}
+.f-nav-btn{padding:3px 10px;border-radius:4px;border:none;cursor:pointer;font-size:11px;font-weight:700}
+
+/* ボトムエリア */
+.f-bottom{display:flex;gap:8px;flex:1;min-height:0;overflow:hidden}
+
+/* エディタパネル */
+.f-editor{width:280px;flex-shrink:0;border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+.f-editor-hdr{height:40px;display:flex;align-items:center;padding:0 14px;font-size:13px;font-weight:700;flex-shrink:0}
+.f-editor-body{flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:6px;overflow:auto}
+.f-field-label{font-size:10px;margin-bottom:2px}
+.f-input{width:100%;border-radius:4px;padding:5px 8px;font-size:12px;outline:none;font-family:inherit}
+.f-row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.f-btn-row{display:flex;gap:5px;margin-top:4px;flex-wrap:wrap}
+.f-btn{border:none;border-radius:4px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer}
+
+/* タスクリスト */
+.f-list{flex:1;border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+.f-list-hdr{height:40px;display:flex;align-items:center;padding:0 14px;font-size:13px;font-weight:700;flex-shrink:0}
+.f-list-wrap{flex:1;overflow:auto}
+.f-table{width:100%;border-collapse:collapse;font-size:12px}
+.f-table th{padding:7px 10px;font-size:11px;font-weight:700;text-align:left;position:sticky;top:0;white-space:nowrap;border-bottom:2px solid}
+.f-table td{padding:6px 10px;border-bottom:1px solid;white-space:nowrap}
+.f-badge{display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700;color:#fff}
+.f-tool-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600}
+
+/* トースト */
+.f-toast{position:absolute;bottom:16px;right:16px;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:700;opacity:.9}
+</style>
+</head>
+<body>
+
+<!-- テーマ選択バー -->
+<div id="theme-bar">
+  <span>THEME</span>
+  <button class="th-tab active" onclick="switchTheme('ocean')"   style="color:#38bdf8">Ocean</button>
+  <button class="th-tab"        onclick="switchTheme('slate')"   style="color:#94a3b8">Slate</button>
+  <button class="th-tab"        onclick="switchTheme('violet')"  style="color:#a78bfa">Violet</button>
+  <button class="th-tab"        onclick="switchTheme('emerald')" style="color:#34d399">Emerald</button>
+</div>
+
+<div id="frames">
+
+<!-- ══ THEME: Ocean ══ -->
+<div class="frame active" id="frame-ocean" style="background:#0d1b2a;color:#e0f0ff">
+  <div class="f-tabbar" style="background:#0a1520;border-bottom:1px solid #1a3045">
+    <button class="f-tab" style="color:#fff;border-bottom-color:#38bdf8">タスク</button>
+    <button class="f-tab" style="color:#4a7fa8">ツール</button>
+    <button class="f-tab" style="color:#4a7fa8">担当者</button>
+  </div>
+  <div class="f-main">
+    <!-- サイドバー -->
+    <div class="f-sidebar" style="background:#0d1b2a;border-right:1px solid #1a3045">
+      <div class="f-sb-hdr" style="color:#e0f0ff;border-bottom-color:#1a3045">フィルタ<span style="color:#4a7fa8;font-size:10px;cursor:pointer">✕</span></div>
+      <div class="f-sb-section" style="border-bottom-color:#1a3045">
+        <div class="f-sb-title" style="color:#4a7fa8">ステータス</div>
+        <div class="f-sb-item" style="color:#a8d0e8"><span class="f-sb-dot" style="background:#38bdf8"></span>未着手</div>
+        <div class="f-sb-item" style="color:#a8d0e8"><span class="f-sb-dot" style="background:#fb923c"></span>進行中</div>
+        <div class="f-sb-item" style="color:#a8d0e8"><span class="f-sb-dot" style="background:#4ade80"></span>完了</div>
+        <div class="f-sb-item" style="color:#a8d0e8"><span class="f-sb-dot" style="background:#facc15"></span>保留</div>
+      </div>
+      <div class="f-sb-section" style="border-bottom-color:#1a3045">
+        <div class="f-sb-title" style="color:#4a7fa8">タスク名</div>
+        <input class="f-sb-search" style="background:#060e17;border:1px solid #1a3045;color:#a8d0e8" placeholder="🔍 検索…">
+      </div>
+      <div class="f-sb-section" style="border-bottom-color:#1a3045">
+        <div class="f-sb-title" style="color:#4a7fa8">Tool</div>
+        <div class="f-sb-item" style="color:#a8d0e8"><input type="checkbox" checked style="accent-color:#38bdf8"> GitHub</div>
+        <div class="f-sb-item" style="color:#a8d0e8"><input type="checkbox" checked style="accent-color:#38bdf8"> Figma</div>
+        <div class="f-sb-item" style="color:#a8d0e8"><input type="checkbox" checked style="accent-color:#38bdf8"> Jira</div>
+      </div>
+    </div>
+    <!-- メインコンテンツ -->
+    <div class="f-content">
+      <!-- ガント -->
+      <div class="f-gantt" style="background:#152535;box-shadow:0 2px 8px rgba(0,0,0,.4)">
+        <div class="f-gantt-hdr" style="background:#1a3045;color:#e0f0ff">
+          <span style="flex:1">ガントチャート</span>
+          <button class="f-nav-btn" style="background:#1e3a52;color:#a8d0e8">◀</button>
+          <span style="font-size:12px;font-weight:700;color:#38bdf8;padding:0 10px">2026年3月</span>
+          <button class="f-nav-btn" style="background:#1e3a52;color:#a8d0e8">▶</button>
+          <button class="f-nav-btn" style="background:#0e4a6e;color:#38bdf8;margin-left:4px">今月</button>
+        </div>
+        <div class="f-gantt-body" style="background:#0f2033;padding:0 10px">
+          <div class="f-gantt-bar"  style="left:10px;  width:140px;background:linear-gradient(90deg,#1e6090,#38bdf8)"></div>
+          <div class="f-gantt-bar2" style="left:80px;  width:180px;background:linear-gradient(90deg,#0e6630,#4ade80)"></div>
+          <div class="f-gantt-bar3" style="left:30px;  width:100px;background:linear-gradient(90deg,#7c2d12,#fb923c)"></div>
+        </div>
+      </div>
+      <!-- ボトム -->
+      <div class="f-bottom">
+        <!-- エディタ -->
+        <div class="f-editor" style="background:#152535;box-shadow:0 2px 8px rgba(0,0,0,.4)">
+          <div class="f-editor-hdr" style="background:#1a3045;color:#e0f0ff">タスク編集</div>
+          <div class="f-editor-body">
+            <div class="f-row2">
+              <div><div class="f-field-label" style="color:#4a7fa8">担当者</div><select class="f-input" style="background:#0d1b2a;border:1px solid #1e3a52;color:#c8e0f0"><option>田中 太郎</option></select></div>
+              <div><div class="f-field-label" style="color:#4a7fa8">Tool</div><select class="f-input" style="background:#0d1b2a;border:1px solid #1e3a52;color:#c8e0f0"><option>001_GitHub</option></select></div>
+            </div>
+            <div class="f-field-label" style="color:#4a7fa8">タスク名 *</div>
+            <input class="f-input" style="background:#0d1b2a;border:1px solid #1e3a52;color:#c8e0f0" value="バックエンド開発">
+            <div class="f-row2">
+              <div><div class="f-field-label" style="color:#4a7fa8">着手日</div><input type="date" class="f-input" style="background:#0d1b2a;border:1px solid #1e3a52;color:#c8e0f0" value="2026-03-20"></div>
+              <div><div class="f-field-label" style="color:#4a7fa8">完了日</div><input type="date" class="f-input" style="background:#0d1b2a;border:1px solid #1e3a52;color:#c8e0f0" value="2026-04-06"></div>
+            </div>
+            <div class="f-field-label" style="color:#4a7fa8">ステータス</div>
+            <select class="f-input" style="background:#0d1b2a;border:1px solid #1e3a52;color:#c8e0f0"><option>進行中</option></select>
+            <div class="f-btn-row">
+              <button class="f-btn" style="background:#0e6630;color:#4ade80">追加</button>
+              <button class="f-btn" style="background:#0e4a6e;color:#38bdf8">更新</button>
+              <button class="f-btn" style="background:#6b1c1c;color:#fca5a5">削除</button>
+              <button class="f-btn" style="background:#1e3a52;color:#a8d0e8">クリア</button>
+            </div>
+          </div>
+        </div>
+        <!-- リスト -->
+        <div class="f-list" style="background:#152535;box-shadow:0 2px 8px rgba(0,0,0,.4)">
+          <div class="f-list-hdr" style="background:#1a3045;color:#e0f0ff">タスク一覧</div>
+          <div class="f-list-wrap">
+            <table class="f-table">
+              <thead><tr style="background:#1a3045">
+                <th style="color:#6aa8c8;border-bottom-color:#1e3a52">ID</th>
+                <th style="color:#6aa8c8;border-bottom-color:#1e3a52">担当者</th>
+                <th style="color:#6aa8c8;border-bottom-color:#1e3a52">Tool</th>
+                <th style="color:#6aa8c8;border-bottom-color:#1e3a52">タスク名</th>
+                <th style="color:#6aa8c8;border-bottom-color:#1e3a52">実施日</th>
+                <th style="color:#6aa8c8;border-bottom-color:#1e3a52">ステータス</th>
+              </tr></thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="f-toast" style="background:#0e4a6e;color:#38bdf8">タスクを更新しました</div>
+</div>
+
+<!-- ══ THEME: Slate ══ -->
+<div class="frame" id="frame-slate" style="background:#18181b;color:#f4f4f5">
+  <div class="f-tabbar" style="background:#09090b;border-bottom:1px solid #27272a">
+    <button class="f-tab" style="color:#f4f4f5;border-bottom-color:#0ea5e9">タスク</button>
+    <button class="f-tab" style="color:#52525b">ツール</button>
+    <button class="f-tab" style="color:#52525b">担当者</button>
+  </div>
+  <div class="f-main">
+    <div class="f-sidebar" style="background:#18181b;border-right:1px solid #27272a">
+      <div class="f-sb-hdr" style="color:#f4f4f5;border-bottom-color:#27272a">フィルタ<span style="color:#52525b;font-size:10px;cursor:pointer">✕</span></div>
+      <div class="f-sb-section" style="border-bottom-color:#27272a">
+        <div class="f-sb-title" style="color:#71717a">ステータス</div>
+        <div class="f-sb-item" style="color:#a1a1aa"><span class="f-sb-dot" style="background:#0ea5e9"></span>未着手</div>
+        <div class="f-sb-item" style="color:#a1a1aa"><span class="f-sb-dot" style="background:#f97316"></span>進行中</div>
+        <div class="f-sb-item" style="color:#a1a1aa"><span class="f-sb-dot" style="background:#22c55e"></span>完了</div>
+        <div class="f-sb-item" style="color:#a1a1aa"><span class="f-sb-dot" style="background:#eab308"></span>保留</div>
+      </div>
+      <div class="f-sb-section" style="border-bottom-color:#27272a">
+        <div class="f-sb-title" style="color:#71717a">タスク名</div>
+        <input class="f-sb-search" style="background:#09090b;border:1px solid #27272a;color:#a1a1aa" placeholder="🔍 検索…">
+      </div>
+      <div class="f-sb-section" style="border-bottom-color:#27272a">
+        <div class="f-sb-title" style="color:#71717a">Tool</div>
+        <div class="f-sb-item" style="color:#a1a1aa"><input type="checkbox" checked style="accent-color:#0ea5e9"> GitHub</div>
+        <div class="f-sb-item" style="color:#a1a1aa"><input type="checkbox" checked style="accent-color:#0ea5e9"> Figma</div>
+        <div class="f-sb-item" style="color:#a1a1aa"><input type="checkbox" checked style="accent-color:#0ea5e9"> Jira</div>
+      </div>
+    </div>
+    <div class="f-content">
+      <div class="f-gantt" style="background:#27272a;box-shadow:0 2px 12px rgba(0,0,0,.5)">
+        <div class="f-gantt-hdr" style="background:#3f3f46;color:#f4f4f5">
+          <span style="flex:1">ガントチャート</span>
+          <button class="f-nav-btn" style="background:#52525b;color:#d4d4d8">◀</button>
+          <span style="font-size:12px;font-weight:700;color:#0ea5e9;padding:0 10px">2026年3月</span>
+          <button class="f-nav-btn" style="background:#52525b;color:#d4d4d8">▶</button>
+          <button class="f-nav-btn" style="background:#0c3e5c;color:#0ea5e9;margin-left:4px">今月</button>
+        </div>
+        <div class="f-gantt-body" style="background:#1c1c1f;padding:0 10px">
+          <div class="f-gantt-bar"  style="left:10px;  width:140px;background:linear-gradient(90deg,#1d4ed8,#0ea5e9)"></div>
+          <div class="f-gantt-bar2" style="left:80px;  width:180px;background:linear-gradient(90deg,#15803d,#22c55e)"></div>
+          <div class="f-gantt-bar3" style="left:30px;  width:100px;background:linear-gradient(90deg,#c2410c,#f97316)"></div>
+        </div>
+      </div>
+      <div class="f-bottom">
+        <div class="f-editor" style="background:#27272a;box-shadow:0 2px 12px rgba(0,0,0,.5)">
+          <div class="f-editor-hdr" style="background:#3f3f46;color:#f4f4f5">タスク編集</div>
+          <div class="f-editor-body">
+            <div class="f-row2">
+              <div><div class="f-field-label" style="color:#71717a">担当者</div><select class="f-input" style="background:#18181b;border:1px solid #3f3f46;color:#d4d4d8"><option>田中 太郎</option></select></div>
+              <div><div class="f-field-label" style="color:#71717a">Tool</div><select class="f-input" style="background:#18181b;border:1px solid #3f3f46;color:#d4d4d8"><option>001_GitHub</option></select></div>
+            </div>
+            <div class="f-field-label" style="color:#71717a">タスク名 *</div>
+            <input class="f-input" style="background:#18181b;border:1px solid #3f3f46;color:#d4d4d8" value="バックエンド開発">
+            <div class="f-row2">
+              <div><div class="f-field-label" style="color:#71717a">着手日</div><input type="date" class="f-input" style="background:#18181b;border:1px solid #3f3f46;color:#d4d4d8" value="2026-03-20"></div>
+              <div><div class="f-field-label" style="color:#71717a">完了日</div><input type="date" class="f-input" style="background:#18181b;border:1px solid #3f3f46;color:#d4d4d8" value="2026-04-06"></div>
+            </div>
+            <div class="f-field-label" style="color:#71717a">ステータス</div>
+            <select class="f-input" style="background:#18181b;border:1px solid #3f3f46;color:#d4d4d8"><option>進行中</option></select>
+            <div class="f-btn-row">
+              <button class="f-btn" style="background:#15803d;color:#bbf7d0">追加</button>
+              <button class="f-btn" style="background:#1d4ed8;color:#bfdbfe">更新</button>
+              <button class="f-btn" style="background:#991b1b;color:#fecaca">削除</button>
+              <button class="f-btn" style="background:#3f3f46;color:#a1a1aa">クリア</button>
+            </div>
+          </div>
+        </div>
+        <div class="f-list" style="background:#27272a;box-shadow:0 2px 12px rgba(0,0,0,.5)">
+          <div class="f-list-hdr" style="background:#3f3f46;color:#f4f4f5">タスク一覧</div>
+          <div class="f-list-wrap">
+            <table class="f-table">
+              <thead><tr style="background:#3f3f46">
+                <th style="color:#71717a;border-bottom-color:#52525b">ID</th>
+                <th style="color:#71717a;border-bottom-color:#52525b">担当者</th>
+                <th style="color:#71717a;border-bottom-color:#52525b">Tool</th>
+                <th style="color:#71717a;border-bottom-color:#52525b">タスク名</th>
+                <th style="color:#71717a;border-bottom-color:#52525b">実施日</th>
+                <th style="color:#71717a;border-bottom-color:#52525b">ステータス</th>
+              </tr></thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="f-toast" style="background:#0c3e5c;color:#38bdf8">タスクを更新しました</div>
+</div>
+
+<!-- ══ THEME: Violet ══ -->
+<div class="frame" id="frame-violet" style="background:#13111c;color:#ede9fe">
+  <div class="f-tabbar" style="background:#0e0c16;border-bottom:1px solid #2e2645">
+    <button class="f-tab" style="color:#ede9fe;border-bottom-color:#a78bfa">タスク</button>
+    <button class="f-tab" style="color:#4c3f7a">ツール</button>
+    <button class="f-tab" style="color:#4c3f7a">担当者</button>
+  </div>
+  <div class="f-main">
+    <div class="f-sidebar" style="background:#13111c;border-right:1px solid #2e2645">
+      <div class="f-sb-hdr" style="color:#ede9fe;border-bottom-color:#2e2645">フィルタ<span style="color:#4c3f7a;font-size:10px;cursor:pointer">✕</span></div>
+      <div class="f-sb-section" style="border-bottom-color:#2e2645">
+        <div class="f-sb-title" style="color:#6d5fa0">ステータス</div>
+        <div class="f-sb-item" style="color:#c4b5fd"><span class="f-sb-dot" style="background:#a78bfa"></span>未着手</div>
+        <div class="f-sb-item" style="color:#c4b5fd"><span class="f-sb-dot" style="background:#f472b6"></span>進行中</div>
+        <div class="f-sb-item" style="color:#c4b5fd"><span class="f-sb-dot" style="background:#34d399"></span>完了</div>
+        <div class="f-sb-item" style="color:#c4b5fd"><span class="f-sb-dot" style="background:#fbbf24"></span>保留</div>
+      </div>
+      <div class="f-sb-section" style="border-bottom-color:#2e2645">
+        <div class="f-sb-title" style="color:#6d5fa0">タスク名</div>
+        <input class="f-sb-search" style="background:#0a0812;border:1px solid #2e2645;color:#c4b5fd" placeholder="🔍 検索…">
+      </div>
+      <div class="f-sb-section" style="border-bottom-color:#2e2645">
+        <div class="f-sb-title" style="color:#6d5fa0">Tool</div>
+        <div class="f-sb-item" style="color:#c4b5fd"><input type="checkbox" checked style="accent-color:#a78bfa"> GitHub</div>
+        <div class="f-sb-item" style="color:#c4b5fd"><input type="checkbox" checked style="accent-color:#a78bfa"> Figma</div>
+        <div class="f-sb-item" style="color:#c4b5fd"><input type="checkbox" checked style="accent-color:#a78bfa"> Jira</div>
+      </div>
+    </div>
+    <div class="f-content">
+      <div class="f-gantt" style="background:#1e1a2e;box-shadow:0 2px 16px rgba(0,0,0,.6)">
+        <div class="f-gantt-hdr" style="background:#2d2545;color:#ede9fe">
+          <span style="flex:1">ガントチャート</span>
+          <button class="f-nav-btn" style="background:#3d3060;color:#c4b5fd">◀</button>
+          <span style="font-size:12px;font-weight:700;color:#a78bfa;padding:0 10px">2026年3月</span>
+          <button class="f-nav-btn" style="background:#3d3060;color:#c4b5fd">▶</button>
+          <button class="f-nav-btn" style="background:#4c1d95;color:#a78bfa;margin-left:4px">今月</button>
+        </div>
+        <div class="f-gantt-body" style="background:#120f1e;padding:0 10px">
+          <div class="f-gantt-bar"  style="left:10px;  width:140px;background:linear-gradient(90deg,#5b21b6,#a78bfa)"></div>
+          <div class="f-gantt-bar2" style="left:80px;  width:180px;background:linear-gradient(90deg,#0f766e,#34d399)"></div>
+          <div class="f-gantt-bar3" style="left:30px;  width:100px;background:linear-gradient(90deg,#9d174d,#f472b6)"></div>
+        </div>
+      </div>
+      <div class="f-bottom">
+        <div class="f-editor" style="background:#1e1a2e;box-shadow:0 2px 16px rgba(0,0,0,.6)">
+          <div class="f-editor-hdr" style="background:#2d2545;color:#ede9fe">タスク編集</div>
+          <div class="f-editor-body">
+            <div class="f-row2">
+              <div><div class="f-field-label" style="color:#6d5fa0">担当者</div><select class="f-input" style="background:#13111c;border:1px solid #3d3060;color:#ddd6fe"><option>田中 太郎</option></select></div>
+              <div><div class="f-field-label" style="color:#6d5fa0">Tool</div><select class="f-input" style="background:#13111c;border:1px solid #3d3060;color:#ddd6fe"><option>001_GitHub</option></select></div>
+            </div>
+            <div class="f-field-label" style="color:#6d5fa0">タスク名 *</div>
+            <input class="f-input" style="background:#13111c;border:1px solid #3d3060;color:#ddd6fe" value="バックエンド開発">
+            <div class="f-row2">
+              <div><div class="f-field-label" style="color:#6d5fa0">着手日</div><input type="date" class="f-input" style="background:#13111c;border:1px solid #3d3060;color:#ddd6fe" value="2026-03-20"></div>
+              <div><div class="f-field-label" style="color:#6d5fa0">完了日</div><input type="date" class="f-input" style="background:#13111c;border:1px solid #3d3060;color:#ddd6fe" value="2026-04-06"></div>
+            </div>
+            <div class="f-field-label" style="color:#6d5fa0">ステータス</div>
+            <select class="f-input" style="background:#13111c;border:1px solid #3d3060;color:#ddd6fe"><option>進行中</option></select>
+            <div class="f-btn-row">
+              <button class="f-btn" style="background:#0f766e;color:#a7f3d0">追加</button>
+              <button class="f-btn" style="background:#4c1d95;color:#ddd6fe">更新</button>
+              <button class="f-btn" style="background:#881337;color:#fda4af">削除</button>
+              <button class="f-btn" style="background:#3d3060;color:#a78bfa">クリア</button>
+            </div>
+          </div>
+        </div>
+        <div class="f-list" style="background:#1e1a2e;box-shadow:0 2px 16px rgba(0,0,0,.6)">
+          <div class="f-list-hdr" style="background:#2d2545;color:#ede9fe">タスク一覧</div>
+          <div class="f-list-wrap">
+            <table class="f-table">
+              <thead><tr style="background:#2d2545">
+                <th style="color:#6d5fa0;border-bottom-color:#3d3060">ID</th>
+                <th style="color:#6d5fa0;border-bottom-color:#3d3060">担当者</th>
+                <th style="color:#6d5fa0;border-bottom-color:#3d3060">Tool</th>
+                <th style="color:#6d5fa0;border-bottom-color:#3d3060">タスク名</th>
+                <th style="color:#6d5fa0;border-bottom-color:#3d3060">実施日</th>
+                <th style="color:#6d5fa0;border-bottom-color:#3d3060">ステータス</th>
+              </tr></thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="f-toast" style="background:#4c1d95;color:#ddd6fe">タスクを更新しました</div>
+</div>
+
+<!-- ══ THEME: Emerald ══ -->
+<div class="frame" id="frame-emerald" style="background:#0a1510;color:#dcfce7">
+  <div class="f-tabbar" style="background:#060e08;border-bottom:1px solid #14532d">
+    <button class="f-tab" style="color:#dcfce7;border-bottom-color:#34d399">タスク</button>
+    <button class="f-tab" style="color:#166534">ツール</button>
+    <button class="f-tab" style="color:#166534">担当者</button>
+  </div>
+  <div class="f-main">
+    <div class="f-sidebar" style="background:#0a1510;border-right:1px solid #14532d">
+      <div class="f-sb-hdr" style="color:#dcfce7;border-bottom-color:#14532d">フィルタ<span style="color:#166534;font-size:10px;cursor:pointer">✕</span></div>
+      <div class="f-sb-section" style="border-bottom-color:#14532d">
+        <div class="f-sb-title" style="color:#166534">ステータス</div>
+        <div class="f-sb-item" style="color:#86efac"><span class="f-sb-dot" style="background:#34d399"></span>未着手</div>
+        <div class="f-sb-item" style="color:#86efac"><span class="f-sb-dot" style="background:#facc15"></span>進行中</div>
+        <div class="f-sb-item" style="color:#86efac"><span class="f-sb-dot" style="background:#60a5fa"></span>完了</div>
+        <div class="f-sb-item" style="color:#86efac"><span class="f-sb-dot" style="background:#f87171"></span>保留</div>
+      </div>
+      <div class="f-sb-section" style="border-bottom-color:#14532d">
+        <div class="f-sb-title" style="color:#166534">タスク名</div>
+        <input class="f-sb-search" style="background:#040a06;border:1px solid #14532d;color:#86efac" placeholder="🔍 検索…">
+      </div>
+      <div class="f-sb-section" style="border-bottom-color:#14532d">
+        <div class="f-sb-title" style="color:#166534">Tool</div>
+        <div class="f-sb-item" style="color:#86efac"><input type="checkbox" checked style="accent-color:#34d399"> GitHub</div>
+        <div class="f-sb-item" style="color:#86efac"><input type="checkbox" checked style="accent-color:#34d399"> Figma</div>
+        <div class="f-sb-item" style="color:#86efac"><input type="checkbox" checked style="accent-color:#34d399"> Jira</div>
+      </div>
+    </div>
+    <div class="f-content">
+      <div class="f-gantt" style="background:#112218;box-shadow:0 2px 16px rgba(0,0,0,.6)">
+        <div class="f-gantt-hdr" style="background:#14532d;color:#dcfce7">
+          <span style="flex:1">ガントチャート</span>
+          <button class="f-nav-btn" style="background:#166534;color:#86efac">◀</button>
+          <span style="font-size:12px;font-weight:700;color:#34d399;padding:0 10px">2026年3月</span>
+          <button class="f-nav-btn" style="background:#166534;color:#86efac">▶</button>
+          <button class="f-nav-btn" style="background:#052e16;color:#34d399;margin-left:4px">今月</button>
+        </div>
+        <div class="f-gantt-body" style="background:#081209;padding:0 10px">
+          <div class="f-gantt-bar"  style="left:10px;  width:140px;background:linear-gradient(90deg,#166534,#4ade80)"></div>
+          <div class="f-gantt-bar2" style="left:80px;  width:180px;background:linear-gradient(90deg,#1e40af,#60a5fa)"></div>
+          <div class="f-gantt-bar3" style="left:30px;  width:100px;background:linear-gradient(90deg,#92400e,#facc15)"></div>
+        </div>
+      </div>
+      <div class="f-bottom">
+        <div class="f-editor" style="background:#112218;box-shadow:0 2px 16px rgba(0,0,0,.6)">
+          <div class="f-editor-hdr" style="background:#14532d;color:#dcfce7">タスク編集</div>
+          <div class="f-editor-body">
+            <div class="f-row2">
+              <div><div class="f-field-label" style="color:#166534">担当者</div><select class="f-input" style="background:#0a1510;border:1px solid #166534;color:#a7f3d0"><option>田中 太郎</option></select></div>
+              <div><div class="f-field-label" style="color:#166534">Tool</div><select class="f-input" style="background:#0a1510;border:1px solid #166534;color:#a7f3d0"><option>001_GitHub</option></select></div>
+            </div>
+            <div class="f-field-label" style="color:#166534">タスク名 *</div>
+            <input class="f-input" style="background:#0a1510;border:1px solid #166534;color:#a7f3d0" value="バックエンド開発">
+            <div class="f-row2">
+              <div><div class="f-field-label" style="color:#166534">着手日</div><input type="date" class="f-input" style="background:#0a1510;border:1px solid #166534;color:#a7f3d0" value="2026-03-20"></div>
+              <div><div class="f-field-label" style="color:#166534">完了日</div><input type="date" class="f-input" style="background:#0a1510;border:1px solid #166534;color:#a7f3d0" value="2026-04-06"></div>
+            </div>
+            <div class="f-field-label" style="color:#166534">ステータス</div>
+            <select class="f-input" style="background:#0a1510;border:1px solid #166534;color:#a7f3d0"><option>進行中</option></select>
+            <div class="f-btn-row">
+              <button class="f-btn" style="background:#052e16;color:#4ade80;border:1px solid #34d399">追加</button>
+              <button class="f-btn" style="background:#1e3a5f;color:#93c5fd;border:1px solid #60a5fa">更新</button>
+              <button class="f-btn" style="background:#450a0a;color:#fca5a5;border:1px solid #f87171">削除</button>
+              <button class="f-btn" style="background:#166534;color:#86efac">クリア</button>
+            </div>
+          </div>
+        </div>
+        <div class="f-list" style="background:#112218;box-shadow:0 2px 16px rgba(0,0,0,.6)">
+          <div class="f-list-hdr" style="background:#14532d;color:#dcfce7">タスク一覧</div>
+          <div class="f-list-wrap">
+            <table class="f-table">
+              <thead><tr style="background:#14532d">
+                <th style="color:#166534;border-bottom-color:#1a6b3a">ID</th>
+                <th style="color:#166534;border-bottom-color:#1a6b3a">担当者</th>
+                <th style="color:#166534;border-bottom-color:#1a6b3a">Tool</th>
+                <th style="color:#166534;border-bottom-color:#1a6b3a">タスク名</th>
+                <th style="color:#166534;border-bottom-color:#1a6b3a">実施日</th>
+                <th style="color:#166534;border-bottom-color:#1a6b3a">ステータス</th>
+              </tr></thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="f-toast" style="background:#052e16;color:#4ade80;border:1px solid #34d399">タスクを更新しました</div>
+</div>
+
+</div><!-- /frames -->
+
+<script>
+const THEMES = {
+  ocean:   {tab:"#38bdf8"},
+  slate:   {tab:"#94a3b8"},
+  violet:  {tab:"#a78bfa"},
+  emerald: {tab:"#34d399"},
+};
+function switchTheme(name) {
+  document.querySelectorAll(".frame").forEach(f => f.classList.remove("active"));
+  document.querySelectorAll(".th-tab").forEach(b => b.classList.remove("active"));
+  document.getElementById("frame-" + name).classList.add("active");
+  const tabs = document.querySelectorAll(".th-tab");
+  const idx  = Object.keys(THEMES).indexOf(name);
+  tabs[idx].classList.add("active");
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>月選択 UI サンプル</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a2332;color:#e0e8f0;font-family:'Segoe UI','Meiryo',sans-serif;padding:24px;display:flex;flex-direction:column;gap:40px}
+h2{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#6b8fa8;margin-bottom:14px}
+.rec{display:inline-block;font-size:9px;background:#1e4a70;color:#74b9ff;border:1px solid #3498db;border-radius:4px;padding:1px 6px;margin-left:8px;font-weight:700}
+
+/* ── 共通: ガントヘッダーバー ── */
+.hdr{
+  background:#2c3e50;color:#fff;padding:0 16px;height:42px;
+  display:flex;align-items:center;gap:10px;
+  border-radius:8px 8px 0 0;font-size:13px;font-weight:700;
+}
+.hdr .flex{flex:1}
+.nav-btn{
+  background:#34495e;color:#fff;border:none;border-radius:4px;
+  padding:4px 10px;cursor:pointer;font-size:12px;
+}
+.nav-btn:hover{background:#4a6278}
+.nav-btn.today{background:#2980b9}
+.mock-canvas{background:#f5f5f5;border-radius:0 0 8px 8px;height:60px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:12px}
+
+/* ── 案A: ドロップダウン型 ── */
+.sel-year,.sel-month{
+  background:#34495e;color:#fff;border:1px solid #4a6278;
+  border-radius:4px;padding:3px 6px;font-size:13px;font-weight:700;
+  cursor:pointer;outline:none;
+}
+.sel-year{width:72px}
+.sel-month{width:56px}
+
+/* ── 案B: ポップアップグリッド ── */
+.month-trigger{
+  display:flex;align-items:center;gap:6px;
+  background:#34495e;border:1px solid #4a6278;border-radius:6px;
+  padding:4px 12px;cursor:pointer;font-size:13px;font-weight:700;
+  position:relative;min-width:110px;justify-content:center;
+  transition:border-color .15s;
+}
+.month-trigger:hover{border-color:#3498db}
+.month-trigger svg{width:10px;height:10px;flex-shrink:0}
+.popup{
+  position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:#1e2f3d;border:1px solid #3d5166;border-radius:10px;
+  padding:14px;z-index:100;width:220px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.popup-year-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.popup-year-btn{
+  background:#2c3e50;border:1px solid #3d5166;color:#a8c0d0;
+  border-radius:4px;padding:3px 8px;cursor:pointer;font-size:12px;
+}
+.popup-year-btn:hover{background:#3d5166;color:#fff}
+.popup-year-val{font-size:15px;font-weight:700;color:#e0e8f0}
+.month-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.mg{
+  background:#2c3e50;border:1px solid #3d5166;border-radius:5px;
+  padding:6px 2px;text-align:center;font-size:11px;cursor:pointer;
+  color:#a8c0d0;transition:all .12s;
+}
+.mg:hover{background:#3d5166;color:#fff}
+.mg.cur{background:#1e4a70;border-color:#3498db;color:#74b9ff;font-weight:700}
+.popup-relative{position:relative;display:inline-block}
+
+/* ── 案C: インライン年+月スライダー ── */
+.year-month-inline{
+  display:flex;align-items:center;gap:0;
+  background:#34495e;border:1px solid #4a6278;border-radius:6px;overflow:hidden;
+}
+.ymi-year,.ymi-month{
+  display:flex;align-items:center;gap:4px;padding:4px 8px;
+  font-size:13px;font-weight:700;
+}
+.ymi-sep{color:#4a6278;font-size:11px;padding:0 2px}
+.ymi-btn{
+  background:none;border:none;color:#6b8fa8;cursor:pointer;
+  font-size:10px;padding:2px;line-height:1;
+  display:flex;align-items:center;transition:color .1s;
+}
+.ymi-btn:hover{color:#fff}
+.ymi-val{min-width:36px;text-align:center}
+
+/* ── 案D: フローティングカレンダー ── */
+.cal-trigger{
+  display:flex;align-items:center;gap:8px;
+  background:#34495e;border:1px solid #4a6278;border-radius:6px;
+  padding:5px 12px;cursor:pointer;font-size:13px;font-weight:700;
+  transition:border-color .15s;
+}
+.cal-trigger:hover{border-color:#3498db}
+.cal-trigger .cal-icon{font-size:12px;opacity:.7}
+.cal-popup{
+  position:absolute;top:calc(100% + 8px);left:0;
+  background:#1e2f3d;border:1px solid #3d5166;border-radius:10px;
+  padding:16px;z-index:100;width:260px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-hdr-btn{
+  background:#2c3e50;border:1px solid #3d5166;color:#a8c0d0;
+  border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;
+  display:flex;align-items:center;gap:4px;
+}
+.cal-hdr-btn:hover{background:#3d5166;color:#fff}
+.year-strip{display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px}
+.year-strip::-webkit-scrollbar{height:2px}
+.year-strip::-webkit-scrollbar-thumb{background:#3d5166}
+.ys{
+  background:#2c3e50;border:1px solid #3d5166;border-radius:4px;
+  padding:3px 8px;font-size:11px;cursor:pointer;white-space:nowrap;
+  color:#a8c0d0;flex-shrink:0;transition:all .1s;
+}
+.ys:hover{background:#3d5166;color:#fff}
+.ys.cur{background:#1e4a70;border-color:#3498db;color:#74b9ff;font-weight:700}
+.month-grid-big{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mgb{
+  background:#2c3e50;border:1px solid #3d5166;border-radius:6px;
+  padding:8px 4px;text-align:center;font-size:12px;cursor:pointer;
+  color:#a8c0d0;transition:all .12s;
+}
+.mgb:hover{background:#3d5166;color:#fff}
+.mgb.cur{background:#1e4a70;border-color:#3498db;color:#74b9ff;font-weight:700}
+.today-btn-row{margin-top:10px;text-align:center}
+.today-btn{
+  background:#2980b9;border:none;color:#fff;border-radius:5px;
+  padding:5px 20px;font-size:11px;cursor:pointer;font-weight:700;
+}
+.today-btn:hover{background:#3498db}
+</style>
+</head>
+<body>
+
+<!-- ══ 案A ══ -->
+<div>
+  <h2>案 A — 年・月ドロップダウン（インライン）</h2>
+  <div class="hdr">
+    <span class="flex">ガントチャート</span>
+    <button class="nav-btn">◀</button>
+    <select class="sel-year">
+      <option>2025年</option><option selected>2026年</option><option>2027年</option>
+    </select>
+    <select class="sel-month">
+      <option>1月</option><option>2月</option><option selected>3月</option>
+      <option>4月</option><option>5月</option><option>6月</option>
+      <option>7月</option><option>8月</option><option>9月</option>
+      <option>10月</option><option>11月</option><option>12月</option>
+    </select>
+    <button class="nav-btn">▶</button>
+    <button class="nav-btn today">今月</button>
+  </div>
+  <div class="mock-canvas">ガントチャート本体</div>
+</div>
+
+<!-- ══ 案B ══ -->
+<div>
+  <h2>案 B — クリックで月グリッドポップアップ <span class="rec">おすすめ</span></h2>
+  <div class="hdr" style="position:relative">
+    <span class="flex">ガントチャート</span>
+    <button class="nav-btn">◀</button>
+    <div class="popup-relative">
+      <div class="month-trigger">
+        2026年3月
+        <svg viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#8fa8be" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <!-- ポップアップ（常時表示でサンプル） -->
+      <div class="popup">
+        <div class="popup-year-row">
+          <button class="popup-year-btn">◀</button>
+          <span class="popup-year-val">2026年</span>
+          <button class="popup-year-btn">▶</button>
+        </div>
+        <div class="month-grid">
+          <div class="mg">1月</div><div class="mg">2月</div>
+          <div class="mg cur">3月</div><div class="mg">4月</div>
+          <div class="mg">5月</div><div class="mg">6月</div>
+          <div class="mg">7月</div><div class="mg">8月</div>
+          <div class="mg">9月</div><div class="mg">10月</div>
+          <div class="mg">11月</div><div class="mg">12月</div>
+        </div>
+      </div>
+    </div>
+    <button class="nav-btn">▶</button>
+    <button class="nav-btn today">今月</button>
+  </div>
+  <div class="mock-canvas" style="margin-top:175px">ガントチャート本体</div>
+</div>
+
+<!-- ══ 案C ══ -->
+<div>
+  <h2>案 C — 年・月それぞれ▲▼でスピン</h2>
+  <div class="hdr">
+    <span class="flex">ガントチャート</span>
+    <div class="year-month-inline">
+      <div class="ymi-year">
+        <button class="ymi-btn">▲</button>
+        <span class="ymi-val">2026</span>
+        <button class="ymi-btn">▼</button>
+      </div>
+      <span class="ymi-sep">年</span>
+      <div class="ymi-month">
+        <button class="ymi-btn">▲</button>
+        <span class="ymi-val" style="min-width:26px">3</span>
+        <button class="ymi-btn">▼</button>
+      </div>
+      <span class="ymi-sep" style="padding-right:8px">月</span>
+    </div>
+    <button class="nav-btn today">今月</button>
+  </div>
+  <div class="mock-canvas">ガントチャート本体</div>
+</div>
+
+<!-- ══ 案D ══ -->
+<div>
+  <h2>案 D — 年ストリップ + 月グリッド ポップアップ</h2>
+  <div class="hdr" style="position:relative">
+    <span class="flex">ガントチャート</span>
+    <button class="nav-btn">◀</button>
+    <div class="popup-relative">
+      <div class="cal-trigger">
+        <span class="cal-icon">📅</span>
+        2026年 3月
+      </div>
+      <!-- ポップアップ（常時表示でサンプル） -->
+      <div class="cal-popup">
+        <!-- 年ストリップ -->
+        <div class="year-strip">
+          <div class="ys">2023</div><div class="ys">2024</div>
+          <div class="ys">2025</div><div class="ys cur">2026</div>
+          <div class="ys">2027</div><div class="ys">2028</div>
+        </div>
+        <!-- 月グリッド -->
+        <div class="month-grid-big">
+          <div class="mgb">1月</div><div class="mgb">2月</div>
+          <div class="mgb cur">3月</div><div class="mgb">4月</div>
+          <div class="mgb">5月</div><div class="mgb">6月</div>
+          <div class="mgb">7月</div><div class="mgb">8月</div>
+          <div class="mgb">9月</div><div class="mgb">10月</div>
+          <div class="mgb">11月</div><div class="mgb">12月</div>
+        </div>
+        <div class="today-btn-row">
+          <button class="today-btn">今月に移動</button>
+        </div>
+      </div>
+    </div>
+    <button class="nav-btn">▶</button>
+    <button class="nav-btn today">今月</button>
+  </div>
+  <div class="mock-canvas" style="margin-top:220px">ガントチャート本体</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Excelフィルタ風 サンプル</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a2332;color:#e0e8f0;font-family:'Segoe UI','Meiryo',sans-serif;padding:30px;font-size:13px}
+h2{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#6b8fa8;margin-bottom:16px}
+
+/* ── Table ── */
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid #3d5166}
+table{border-collapse:collapse;width:100%;min-width:700px;background:#1e2f3d}
+tbody tr:hover{background:#253647}
+td,th{padding:7px 10px;border-bottom:1px solid #2c3e50;white-space:nowrap}
+td{font-size:12px;color:#c8d8e8}
+td:first-child{color:#6b8fa8;font-size:11px}
+thead tr{background:#2c3e50}
+th{font-size:11px;font-weight:700;color:#a8c0d0;letter-spacing:.5px;
+   -webkit-user-select:none;user-select:none;position:relative}
+th:hover{background:#34495e}
+th.filtered{color:#74b9ff}
+.th-inner{display:flex;align-items:center;gap:4px;justify-content:space-between}
+.col-name{flex:1}
+.filter-btn{
+  width:16px;height:16px;border-radius:3px;background:none;border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:#6b8fa8;font-size:9px;flex-shrink:0;transition:all .1s;
+}
+.filter-btn:hover{background:#3d5166;color:#fff}
+th.filtered .filter-btn{color:#3498db}
+
+/* ── ポップアップ共通 ── */
+.filter-popup{
+  position:fixed;background:#1e2f3d;border:1px solid #3d5166;border-radius:8px;
+  padding:10px;z-index:1000;width:210px;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);display:none;
+}
+.filter-popup.open{display:block}
+.filter-popup.date-mode{width:278px}
+.fp-btns{display:flex;gap:6px;margin-top:8px;border-top:1px solid #2c3e50;padding-top:8px}
+.fp-btn{flex:1;padding:5px 0;border-radius:4px;border:none;font-size:11px;font-weight:700;cursor:pointer}
+.fp-ok{background:#2980b9;color:#fff}.fp-ok:hover{background:#3498db}
+.fp-cancel{background:#2c3e50;color:#a8c0d0;border:1px solid #3d5166}.fp-cancel:hover{background:#3d5166;color:#fff}
+.fp-clear{background:none;color:#e74c3c;border:1px solid #e74c3c;font-size:10px;padding:5px 8px;flex:none}
+.fp-clear:hover{background:#e74c3c;color:#fff}
+
+/* ── テキストフィルタ ── */
+.fp-search{
+  width:100%;background:#141f2b;border:1px solid #3d5166;border-radius:4px;
+  color:#e0e8f0;padding:5px 8px;font-size:12px;margin-bottom:8px;outline:none;
+}
+.fp-search:focus{border-color:#3498db}
+.fp-all{
+  display:flex;align-items:center;gap:7px;padding:4px 6px;
+  border-bottom:1px solid #2c3e50;margin-bottom:4px;cursor:pointer;border-radius:3px;
+}
+.fp-all:hover{background:#253647}
+.fp-all label{cursor:pointer;font-size:12px;color:#a8c0d0;font-weight:700}
+.fp-list{max-height:180px;overflow-y:auto}
+.fp-list::-webkit-scrollbar{width:4px}
+.fp-list::-webkit-scrollbar-thumb{background:#3d5166;border-radius:2px}
+.fp-item{display:flex;align-items:center;gap:7px;padding:4px 6px;cursor:pointer;border-radius:3px}
+.fp-item:hover{background:#253647}
+.fp-item label{cursor:pointer;font-size:12px;color:#c8d8e8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fp-item input[type=checkbox],.fp-all input[type=checkbox]{
+  accent-color:#3498db;width:13px;height:13px;flex-shrink:0;cursor:pointer;
+}
+.fp-empty{color:#6b8fa8;font-size:11px;padding:8px 6px;text-align:center}
+
+/* ── 日付フィルタ（埋め込みカレンダー） ── */
+#fp-date-section{display:none}
+
+/* 選択状態ヒント */
+.fp-range-hint{
+  font-size:11px;text-align:center;padding:5px 6px;
+  background:#141f2b;border-radius:5px;margin-bottom:8px;
+  color:#6b8fa8;border:1px solid #2c3e50;letter-spacing:.3px;
+  min-height:28px;display:flex;align-items:center;justify-content:center;
+}
+.fp-range-hint.selecting{color:#f39c12;border-color:#e67e22}
+.fp-range-hint.complete  {color:#2ecc71;border-color:#27ae60}
+
+/* カレンダー本体 */
+.mc-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.mc-nav{
+  background:#2c3e50;border:1px solid #3d5166;color:#a8c0d0;
+  border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;
+}
+.mc-nav:hover{background:#3d5166;color:#fff}
+/* 日付セクション レイアウト */
+.fp-date-body{display:flex;gap:8px}
+/* 年縦リスト */
+.cal-year-col{display:flex;flex-direction:column;align-items:stretch;gap:3px;flex-shrink:0;width:50px}
+.cal-year-list{
+  display:flex;flex-direction:column;gap:2px;
+  overflow-y:auto;max-height:156px;  /* 約6件 */
+}
+.cal-year-list::-webkit-scrollbar{width:0}
+.ys-btn{
+  background:#2c3e50;border:1px solid #3d5166;border-radius:4px;
+  color:#a8c0d0;padding:4px 0;font-size:11px;cursor:pointer;
+  text-align:center;flex-shrink:0;width:100%;
+}
+.ys-btn:hover{background:#3d5166;color:#fff}
+.ys-btn.cur{background:#1e4a70;border-color:#3498db;color:#74b9ff;font-weight:700}
+/* カレンダー列 */
+.cal-body{flex:1;min-width:0}
+/* 今日ボタン行 */
+.fp-today-row{margin-top:6px;text-align:center}
+.fp-today{
+  background:#1e4a70;border:1px solid #3498db;color:#74b9ff;
+  border-radius:4px;padding:3px 18px;font-size:11px;font-weight:700;cursor:pointer;
+}
+.fp-today:hover{background:#2980b9;color:#fff}
+/* 月ボタン（クリックで1か月選択） */
+.mc-month-btn{
+  background:none;border:1px solid transparent;border-radius:4px;
+  color:#e0e8f0;font-size:13px;font-weight:700;cursor:pointer;
+  padding:2px 10px;transition:all .1s;
+}
+.mc-month-btn:hover{background:#34495e;border-color:#3d5166}
+.mc-week{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px}
+.mc-wday{text-align:center;font-size:9px;color:#6b8fa8;padding:2px 0;font-weight:700}
+.mc-wday:first-child{color:#e25555}
+.mc-wday:last-child {color:#5b9bd5}
+.mc-days{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.mc-day{
+  text-align:center;font-size:11px;padding:5px 2px;cursor:pointer;
+  border-radius:3px;color:#c8d8e8;transition:background .08s;
+}
+.mc-day:hover:not(.other-month){background:#34495e}
+.mc-day.other-month{color:#3a4f63;cursor:pointer}
+.mc-day.other-month:hover{background:#2a3b4a}
+.mc-day.today{color:#3498db;font-weight:700}
+/* 範囲ハイライト */
+.mc-day.in-range    {background:rgba(41,128,185,.25);border-radius:0;color:#c8d8e8}
+.mc-day.range-start {background:#2980b9;color:#fff;font-weight:700;border-radius:4px 0 0 4px}
+.mc-day.range-end   {background:#2980b9;color:#fff;font-weight:700;border-radius:0 4px 4px 0}
+.mc-day.range-start.range-end{border-radius:4px}
+/* ホバープレビュー（from確定、toプレビュー中）*/
+.mc-day.preview-in-range{background:rgba(41,128,185,.12);border-radius:0;color:#a8c0d0}
+.mc-day.preview-end {background:#34495e;color:#e0e8f0;font-weight:700;border-radius:0 4px 4px 0;outline:1px dashed #5b8db8}
+/* 日・土 */
+.mc-day.sun{color:#e25555}
+.mc-day.sat{color:#5b9bd5}
+.mc-day.range-start,.mc-day.range-end,.mc-day.range-start.range-end{color:#fff}
+</style>
+</head>
+<body>
+<h2>Excel フィルタ風 テーブルサンプル</h2>
+<div class="tbl-wrap">
+  <table id="main-table">
+    <thead><tr id="thead-row"></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<!-- フィルタポップアップ -->
+<div class="filter-popup" id="filter-popup">
+
+  <!-- ─ テキスト列用 ─ -->
+  <div id="fp-text-section">
+    <input type="text" class="fp-search" id="fp-search" placeholder="🔍 検索…" oninput="renderPopupList()">
+    <div class="fp-all">
+      <input type="checkbox" id="fp-all-cb" onchange="toggleAll(this.checked)">
+      <label for="fp-all-cb">（すべて選択）</label>
+    </div>
+    <div class="fp-list" id="fp-list"></div>
+  </div>
+
+  <!-- ─ 日付列用（埋め込みカレンダー）─ -->
+  <div id="fp-date-section">
+    <!-- 今日ボタン -->
+    <div class="fp-today-row">
+      <button type="button" class="fp-today" onclick="goToday()">今日</button>
+    </div>
+    <!-- 選択状態表示 -->
+    <div class="fp-range-hint" id="fp-range-hint">開始日をクリック</div>
+    <div class="fp-date-body">
+      <!-- 年縦リスト -->
+      <div class="cal-year-col">
+        <button type="button" class="mc-nav" onclick="yearNav(-1)">▲</button>
+        <div class="cal-year-list" id="cal-year-strip"></div>
+        <button type="button" class="mc-nav" onclick="yearNav(1)">▼</button>
+      </div>
+      <!-- カレンダー列 -->
+      <div class="cal-body">
+        <div class="mc-hdr">
+          <button type="button" class="mc-nav" onclick="calNav(-1)">◀</button>
+          <button type="button" class="mc-month-btn" id="mc-month-btn" onclick="selectWholeMonth()" title="この月全体を選択"></button>
+          <button type="button" class="mc-nav" onclick="calNav(1)">▶</button>
+        </div>
+        <div class="mc-week">
+          <div class="mc-wday">日</div><div class="mc-wday">月</div><div class="mc-wday">火</div>
+          <div class="mc-wday">水</div><div class="mc-wday">木</div><div class="mc-wday">金</div>
+          <div class="mc-wday">土</div>
+        </div>
+        <div class="mc-days" id="mc-days"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fp-btns">
+    <button type="button" class="fp-btn fp-clear"  onclick="clearPopup()">クリア</button>
+    <button type="button" class="fp-btn fp-cancel" onclick="closePopup()">キャンセル</button>
+    <button type="button" class="fp-btn fp-ok"     onclick="applyFilter()">OK</button>
+  </div>
+</div>
+
+<script>
+// ── データ ───────────────────────────────────────
+const COLS = [
+  {key:"id",       label:"ID"},
+  {key:"assignee", label:"担当者"},
+  {key:"tool",     label:"Tool"},
+  {key:"name",     label:"タスク名"},
+  {key:"impl",     label:"実施日",   type:"date"},
+  {key:"start",    label:"着手日",   type:"date"},
+  {key:"end",      label:"完了日",   type:"date"},
+  {key:"status",   label:"ステータス"},
+];
+const ROWS = [];
+
+// ── フィルタ状態 ──────────────────────────────────
+const filters = {};
+COLS.forEach(c => filters[c.key] = null);
+
+let _popupCol   = null;
+let _popupState = {};
+// 日付フィルタ作業中
+let _dateFrom   = null;   // "YYYY-MM-DD" | null
+let _dateTo     = null;   // "YYYY-MM-DD" | null
+let _hoverDate  = null;   // ホバー中の日付（TO のプレビュー）
+// カレンダー表示月
+let _calYear    = new Date().getFullYear();
+let _calMonth   = new Date().getMonth();
+
+// ── テーブル描画 ──────────────────────────────────
+function renderTable() {
+  document.getElementById("thead-row").innerHTML = COLS.map(c => {
+    const active = filters[c.key] !== null;
+    return `<th class="${active?'filtered':''}">
+      <div class="th-inner">
+        <span class="col-name">${c.label}${active?' 🔽':''}</span>
+        <button type="button" class="filter-btn" onclick="openPopup(event,'${c.key}')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" style="display:block;pointer-events:none"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button>
+      </div></th>`;
+  }).join('');
+
+  const rows = filteredRows();
+  document.getElementById("tbody").innerHTML = rows.length === 0
+    ? `<tr><td colspan="${COLS.length}" style="text-align:center;color:#6b8fa8;padding:20px">該当なし</td></tr>`
+    : rows.map(r=>`<tr>${COLS.map(c=>`<td>${r[c.key]??'-'}</td>`).join('')}</tr>`).join('');
+}
+
+function filteredRows() {
+  return ROWS.filter(r => COLS.every(c => {
+    const f = filters[c.key];
+    if (f === null) return true;
+    if (c.type === "date") {
+      const v = r[c.key] ?? "";
+      if (f.from && v < f.from) return false;
+      if (f.to   && v > f.to)   return false;
+      return true;
+    }
+    return f.has(String(r[c.key] ?? ""));
+  }));
+}
+
+// ── ポップアップ開閉 ──────────────────────────────
+function openPopup(e, col) {
+  e.stopPropagation();
+  const popup  = document.getElementById("filter-popup");
+  if (_popupCol === col && popup.classList.contains("open")) { closePopup(); return; }
+
+  _popupCol = col;
+  const isDate = COLS.find(c => c.key === col)?.type === "date";
+
+  document.getElementById("fp-text-section").style.display = isDate ? "none"  : "block";
+  document.getElementById("fp-date-section").style.display = isDate ? "block" : "none";
+  popup.classList.toggle("date-mode", isDate);
+
+  if (isDate) {
+    const active = filters[col];
+    _dateFrom  = active?.from ?? null;
+    _dateTo    = active?.to   ?? null;
+    _hoverDate = null;
+    // カレンダーの表示月: from があればそこ、なければ今月
+    const base = _dateFrom ? new Date(_dateFrom + "T00:00:00") : new Date();
+    _calYear  = base.getFullYear();
+    _calMonth = base.getMonth();
+    renderCalDays();
+    updateRangeHint();
+  } else {
+    const allVals = [...new Set(ROWS.map(r => String(r[col]??"")))].sort();
+    _popupState = {};
+    const active = filters[col];
+    allVals.forEach(v => _popupState[v] = active===null || active.has(v));
+    document.getElementById("fp-search").value = "";
+    renderPopupList();
+  }
+
+  // 位置決め（ポップアップの幅が変わっているので取得し直す）
+  const pw   = isDate ? 236 : 210;
+  const rect = e.currentTarget.getBoundingClientRect();
+  let left   = rect.left;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  popup.style.top  = (rect.bottom + 4) + "px";
+  popup.style.left = left + "px";
+  popup.classList.add("open");
+}
+
+function closePopup() {
+  document.getElementById("filter-popup").classList.remove("open");
+  _popupCol  = null;
+  _hoverDate = null;
+}
+
+// ── テキストフィルタ ──────────────────────────────
+function renderPopupList() {
+  const q       = document.getElementById("fp-search").value.toLowerCase();
+  const allVals = [...new Set(ROWS.map(r => String(r[_popupCol]??"")))].sort();
+  const visible = allVals.filter(v => !q || v.toLowerCase().includes(q));
+  const list    = document.getElementById("fp-list");
+
+  list.innerHTML = visible.length === 0
+    ? `<div class="fp-empty">一致なし</div>`
+    : visible.map((v,i) => {
+        const id = "fp_item_" + i;
+        return `<div class="fp-item">
+          <input type="checkbox" id="${id}" data-val="${v.replace(/"/g,'&quot;')}"
+            ${_popupState[v]?'checked':''} onchange="itemToggle(this)">
+          <label for="${id}" title="${v}">${v}</label>
+        </div>`;
+      }).join('');
+
+  const cnt = visible.filter(v => _popupState[v]).length;
+  const cb  = document.getElementById("fp-all-cb");
+  cb.checked       = cnt === visible.length;
+  cb.indeterminate = cnt > 0 && cnt < visible.length;
+}
+
+function itemToggle(cb) {
+  _popupState[cb.dataset.val] = cb.checked;
+  const q = document.getElementById("fp-search").value.toLowerCase();
+  const visible = [...new Set(ROWS.map(r => String(r[_popupCol]??"")))].sort()
+    .filter(x => !q || x.toLowerCase().includes(q));
+  const cnt = visible.filter(x => _popupState[x]).length;
+  const allCb = document.getElementById("fp-all-cb");
+  allCb.checked       = cnt === visible.length;
+  allCb.indeterminate = cnt > 0 && cnt < visible.length;
+}
+
+function toggleAll(checked) {
+  const q = document.getElementById("fp-search").value.toLowerCase();
+  [...new Set(ROWS.map(r => String(r[_popupCol]??"")))].sort()
+    .filter(v => !q || v.toLowerCase().includes(q))
+    .forEach(v => _popupState[v] = checked);
+  renderPopupList();
+}
+
+// ── クリア / OK ───────────────────────────────────
+function clearPopup() {
+  const isDate = COLS.find(c => c.key === _popupCol)?.type === "date";
+  if (isDate) {
+    _dateFrom = null; _dateTo = null; _hoverDate = null;
+    renderCalDays();
+    updateRangeHint();
+  } else {
+    [...new Set(ROWS.map(r => String(r[_popupCol]??"")))].forEach(v => _popupState[v] = true);
+    renderPopupList();
+  }
+}
+
+function applyFilter() {
+  const col    = _popupCol;
+  const isDate = COLS.find(c => c.key === col)?.type === "date";
+  if (isDate) {
+    filters[col] = (_dateFrom || _dateTo) ? {from:_dateFrom, to:_dateTo} : null;
+  } else {
+    const allVals = [...new Set(ROWS.map(r => String(r[col]??"")))];
+    const checked = allVals.filter(v => _popupState[v]);
+    filters[col]  = checked.length === allVals.length ? null : new Set(checked);
+  }
+  closePopup();
+  renderTable();
+}
+
+// ── ローカル日付フォーマット（toISOString は UTC なのでズレる）──
+function fmtDate(d) {
+  return d.getFullYear() + "-"
+    + String(d.getMonth() + 1).padStart(2, "0") + "-"
+    + String(d.getDate()).padStart(2, "0");
+}
+
+// ── カレンダー ────────────────────────────────────
+function calNav(dir) {
+  _calMonth += dir;
+  if (_calMonth < 0)  { _calMonth = 11; _calYear--; }
+  if (_calMonth > 11) { _calMonth = 0;  _calYear++; }
+  renderCalDays();
+}
+
+function renderYearStrip() {
+  const strip = document.getElementById("cal-year-strip");
+  strip.innerHTML = Array.from({length: 8}, (_, i) => _calYear - 3 + i).map(y =>
+    `<button type="button" class="ys-btn${y === _calYear ? ' cur' : ''}"
+      data-year="${y}">${y}</button>`
+  ).join('');
+  requestAnimationFrame(() => {
+    const cur = strip.querySelector('.ys-btn.cur');
+    if (cur) cur.scrollIntoView({inline: 'center', block: 'nearest'});
+  });
+}
+
+function yearNav(dir) {
+  _calYear += dir;
+  renderCalDays();
+}
+
+function goToday() {
+  _calYear  = new Date().getFullYear();
+  _calMonth = new Date().getMonth();
+  renderCalDays();
+}
+
+function selectWholeMonth() {
+  _dateFrom  = fmtDate(new Date(_calYear, _calMonth, 1));
+  _dateTo    = fmtDate(new Date(_calYear, _calMonth + 1, 0));
+  _hoverDate = null;
+  renderCalDays();
+  updateRangeHint();
+}
+
+function renderCalDays() {
+  document.getElementById("mc-month-btn").textContent = `${_calMonth + 1}月`;
+  renderYearStrip();
+
+  const todayStr = fmtDate(new Date());
+  const from = _dateFrom;
+  const to   = _dateTo;
+  const hov  = _hoverDate;   // FROM確定・TO未確定のときのプレビュー先
+
+  const first     = new Date(_calYear, _calMonth, 1);
+  const startDow  = first.getDay();
+  const totalDays = new Date(_calYear, _calMonth + 1, 0).getDate();
+
+  let html = "";
+
+  const dayHtml = (ds, dayNum, extra = "") => {
+    const dow = new Date(ds + "T00:00:00").getDay();
+    let cls = "mc-day" + extra;
+    if (dow === 0) cls += " sun";
+    if (dow === 6) cls += " sat";
+    if (ds === todayStr) cls += " today";
+    cls += " " + computeDayClass(ds, from, to, hov);
+    return `<div class="${cls.trim()}" data-ds="${ds}">${dayNum}</div>`;
+  };
+
+  // 前月
+  for (let i = 0; i < startDow; i++) {
+    const d  = new Date(_calYear, _calMonth, i - startDow + 1);
+    html += dayHtml(fmtDate(d), d.getDate(), " other-month");
+  }
+  // 当月
+  for (let d = 1; d <= totalDays; d++) {
+    html += dayHtml(fmtDate(new Date(_calYear, _calMonth, d)), d);
+  }
+  // 翌月
+  const rem = 7 - ((startDow + totalDays) % 7);
+  if (rem < 7) {
+    for (let d = 1; d <= rem; d++) {
+      html += dayHtml(fmtDate(new Date(_calYear, _calMonth + 1, d)), d, " other-month");
+    }
+  }
+
+  document.getElementById("mc-days").innerHTML = html;
+}
+
+// ds に付けるクラスを決定
+function computeDayClass(ds, from, to, hov) {
+  // 両端確定済みの範囲
+  if (from && to) {
+    if (ds === from && ds === to) return "range-start range-end";
+    if (ds === from)              return "range-start";
+    if (ds === to)                return "range-end";
+    if (ds > from && ds < to)     return "in-range";
+    return "";
+  }
+  // FROM確定・TOプレビュー中
+  if (from && !to && hov) {
+    const lo = from < hov ? from : hov;
+    const hi = from < hov ? hov  : from;
+    if (ds === from) return from === hov ? "range-start range-end" : (from < hov ? "range-start" : "range-end");
+    if (ds === hov)  return from < hov   ? "preview-end" : "range-start"; // hov < from → hovがstart
+    if (ds > lo && ds < hi) return "preview-in-range";
+    return "";
+  }
+  // FROM だけ確定（ホバーなし）
+  if (from && !to && !hov) {
+    return ds === from ? "range-start range-end" : "";
+  }
+  return "";
+}
+
+// カレンダーの日付クリック（デリゲーションから呼ばれる）
+function selectCalDay(ds) {
+  if (!_dateFrom || (_dateFrom && _dateTo)) {
+    // 1クリック目：FROM をセット、TO をリセット
+    _dateFrom  = ds;
+    _dateTo    = null;
+  } else {
+    // 2クリック目：TO をセット（FROM より前なら自動入れ替え）
+    if (ds >= _dateFrom) {
+      _dateTo = ds;
+    } else {
+      _dateTo   = _dateFrom;
+      _dateFrom = ds;
+    }
+  }
+  _hoverDate = null;
+  renderCalDays();
+  updateRangeHint();
+}
+
+// ヒントラベル更新
+function updateRangeHint() {
+  const el = document.getElementById("fp-range-hint");
+  el.className = "fp-range-hint";
+  if (!_dateFrom && !_dateTo) {
+    el.textContent = "開始日をクリック";
+  } else if (_dateFrom && !_dateTo) {
+    el.textContent = `${_dateFrom}　→　終了日をクリック`;
+    el.classList.add("selecting");
+  } else {
+    el.textContent = `${_dateFrom}　〜　${_dateTo}`;
+    el.classList.add("complete");
+  }
+}
+
+// ── cal-year-strip イベントデリゲーション ──────────
+document.getElementById("cal-year-strip").addEventListener("click", e => {
+  e.stopPropagation();
+  const btn = e.target.closest("[data-year]");
+  if (btn) {
+    _calYear = Number(btn.dataset.year);
+    renderCalDays();
+  }
+});
+
+// ── mc-days イベントデリゲーション ────────────────
+// innerHTML が書き換わっても mc-days 自体は生き続けるのでリスナーは1回だけ登録
+(function() {
+  const grid = document.getElementById("mc-days");
+
+  grid.addEventListener("click", e => {
+    e.stopPropagation();   // document の closePopup 発火を防ぐ
+    const day = e.target.closest("[data-ds]");
+    if (day) selectCalDay(day.dataset.ds);
+  });
+
+  grid.addEventListener("mouseover", e => {
+    const day = e.target.closest("[data-ds]");
+    const ds  = day?.dataset.ds ?? null;
+    if (_dateFrom && !_dateTo && ds !== _hoverDate) {
+      _hoverDate = ds;
+      renderCalDays();
+    }
+  });
+
+  grid.addEventListener("mouseleave", () => {
+    if (_hoverDate !== null) {
+      _hoverDate = null;
+      renderCalDays();
+    }
+  });
+})();
+
+// ── 外クリック ────────────────────────────────────
+document.addEventListener("click", e => {
+  const popup = document.getElementById("filter-popup");
+  if (popup.classList.contains("open") && !popup.contains(e.target)) closePopup();
+});
+
+// 初期描画
+renderTable();
+</script>
+</body>
+</html>

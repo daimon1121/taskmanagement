@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>タスク管理</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  font-family:"Segoe UI","Meiryo",sans-serif;
+  background:#eef1f5;height:100vh;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+
+/* ── Tab bar ────────────────────────────────────────── */
+#tab-bar{
+  background:#1a252f;display:flex;align-items:center;
+  padding:0 14px;height:44px;flex-shrink:0;gap:2px;
+}
+.tab-btn{
+  background:transparent;color:#8fa3b1;border:none;
+  border-bottom:3px solid transparent;
+  padding:0 18px;height:44px;cursor:pointer;
+  font-size:13px;font-weight:700;letter-spacing:.04em;
+  transition:color .15s,border-color .15s;
+}
+.tab-btn:hover{color:#cde}
+.tab-btn.active{color:#fff;border-bottom-color:#3498db}
+
+/* ── Layout ─────────────────────────────────────────── */
+#main-area{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.tab-pane{flex:1;min-height:0;display:none;overflow:hidden}
+.tab-pane.active{display:flex}
+#tab-task{flex-direction:row}
+#task-main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+#tab-tool,#tab-assignee{flex-direction:row;padding:6px 10px 10px;gap:8px}
+
+/* ── Panel ──────────────────────────────────────────── */
+.panel{
+  background:#fff;border-radius:8px;
+  box-shadow:0 1px 6px rgba(0,0,0,.10);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.panel-hdr{
+  background:#2c3e50;color:#fff;
+  padding:0 16px;height:42px;
+  display:flex;align-items:center;gap:10px;
+  flex-shrink:0;font-size:13px;font-weight:700;letter-spacing:.04em;
+}
+.panel-hdr .flex{flex:1}
+.panel-hdr .badge{
+  background:#34495e;border-radius:10px;
+  padding:1px 9px;font-size:11px;font-weight:600;
+}
+
+/* ── Task tab ───────────────────────────────────────── */
+#gantt-section{margin:6px 10px 4px;height:44vh;min-height:220px}
+#gantt-header-outer{flex-shrink:0;overflow:hidden;height:58px}
+#gantt-header-outer canvas,#gantt-body-outer canvas{display:block}
+#gantt-body-outer{flex:1;min-height:0;overflow:auto}
+
+#bottom{display:flex;flex:1;min-height:0;margin:4px 10px 10px;gap:8px}
+#editor-section{width:640px;flex-shrink:0}
+#list-section{flex:1}
+#list-wrap{flex:1;overflow-y:auto;overflow-x:auto}
+
+/* ── Sidebar tabs (Tool / Assignee) ─────────────────── */
+.side-editor{width:300px;flex-shrink:0}
+.side-list  {flex:1}
+.search-wrap{padding:8px 10px;flex-shrink:0;border-bottom:1px solid #f0f0f0}
+.search-wrap input{width:100%}
+.scroll-list{flex:1;overflow-y:auto}
+
+/* ── Nav buttons ────────────────────────────────────── */
+.nav-btn{
+  background:#34495e;color:#fff;border:none;
+  border-radius:4px;padding:4px 10px;
+  cursor:pointer;font-size:12px;transition:background .15s;
+}
+.nav-btn:hover{background:#4a6278}
+.nav-btn.today{background:#2980b9}
+.nav-btn.today:hover{background:#3498db}
+.month-picker-wrap{position:relative}
+.cal-trigger{
+  display:flex;align-items:center;gap:7px;
+  background:#34495e;border:1px solid #4a6278;border-radius:6px;
+  padding:4px 12px;cursor:pointer;font-size:13px;font-weight:700;color:#fff;
+  transition:border-color .15s;white-space:nowrap;
+}
+.cal-trigger:hover{border-color:#3498db}
+.cal-trigger svg{flex-shrink:0;transition:transform .2s}
+.cal-trigger.open svg{transform:rotate(180deg)}
+#month-label{pointer-events:none}
+.cal-popup{
+  position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:#1e2f3d;border:1px solid #3d5166;border-radius:10px;
+  padding:14px;z-index:200;width:256px;
+  box-shadow:0 8px 32px rgba(0,0,0,.55);
+  display:none;
+}
+.cal-popup.open{display:block}
+.year-strip{
+  display:flex;gap:5px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;
+}
+.year-strip::-webkit-scrollbar{height:3px}
+.year-strip::-webkit-scrollbar-thumb{background:#3d5166;border-radius:2px}
+.ys{
+  background:#2c3e50;border:1px solid #3d5166;border-radius:4px;
+  padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;
+  color:#a8c0d0;flex-shrink:0;transition:all .12s;
+}
+.ys:hover{background:#3d5166;color:#fff}
+.ys.cur{background:#1e4a70;border-color:#3498db;color:#74b9ff;font-weight:700}
+.month-grid-big{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mgb{
+  background:#2c3e50;border:1px solid #3d5166;border-radius:6px;
+  padding:8px 4px;text-align:center;font-size:12px;cursor:pointer;
+  color:#a8c0d0;transition:all .12s;
+}
+.mgb:hover{background:#3d5166;color:#fff}
+.mgb.cur{background:#1e4a70;border-color:#3498db;color:#74b9ff;font-weight:700}
+
+/* ── Editor form ────────────────────────────────────── */
+.editor-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.field-label{font-size:11px;color:#777;margin-bottom:1px;margin-top:5px}
+.field-label:first-child{margin-top:0}
+
+input[type=text],input[type=date],select,textarea{
+  width:100%;border:1px solid #ddd;border-radius:5px;
+  padding:6px 8px;font-size:13px;font-family:inherit;
+  outline:none;transition:border-color .15s;
+}
+input:focus,select:focus,textarea:focus{border-color:#3498db}
+textarea{resize:none}
+.editor-row-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
+#f-desc{flex:1;min-height:80px}
+
+.btn-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.btn{border:none;border-radius:5px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.btn:disabled{opacity:.35;cursor:default}
+.btn:not(:disabled):hover{opacity:.85}
+.btn-add   {background:#27ae60;color:#fff}
+.btn-update{background:#2980b9;color:#fff}
+.btn-delete{background:#e74c3c;color:#fff}
+.btn-clear {background:#95a5a6;color:#fff}
+
+/* ── Tables ─────────────────────────────────────────── */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{
+  background:#f0f2f5;padding:9px 10px;
+  text-align:left;font-weight:700;color:#444;
+  position:sticky;top:0;cursor:pointer;
+  -webkit-user-select:none;user-select:none;
+  white-space:nowrap;border-bottom:2px solid #ddd;
+}
+th:hover{background:#e4e7ec}
+th.sorted-asc::after {content:" ▲";font-size:10px;color:#3498db}
+th.sorted-desc::after{content:" ▼";font-size:10px;color:#3498db}
+
+/* task table widths */
+.col-id      {width:42px}
+.col-asgn    {width:90px}
+.col-tool    {width:130px}
+.col-date    {width:100px}
+.col-status  {width:88px}
+.col-priority{width:66px}
+.col-tid     {width:54px}
+
+td{
+  padding:8px 10px;border-bottom:1px solid #f0f0f0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;
+}
+tr:hover td    {background:#f5f9ff;cursor:pointer}
+tr.selected td {background:#dceeff!important}
+
+/* ── Badges ─────────────────────────────────────────── */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:#fff}
+.badge-未着手{background:#5B9BD5}.badge-進行中{background:#ED7D31}
+.badge-完了  {background:#70AD47}.badge-保留  {background:#e6ac00;color:#333}
+.pri{font-weight:700}
+.pri-高{color:#e74c3c}.pri-中{color:#f39c12}.pri-低{color:#27ae60}
+.tool-tag{
+  display:inline-block;background:#eaf0fb;color:#2471a3;
+  border-radius:4px;padding:1px 7px;font-size:11px;font-weight:600;
+  cursor:pointer;transition:background .1s;
+}
+.tool-tag:hover{background:#d0e4f7}
+
+/* ── Filter sidebar ─────────────────────────────────── */
+#filter-sidebar{
+  width:10%;min-width:120px;max-width:180px;
+  background:#2c3e50;color:#e0e8f0;
+  display:flex;flex-direction:column;
+  flex-shrink:0;overflow:hidden;
+}
+.sb-hdr{
+  padding:10px 12px 8px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid #3d5166;flex-shrink:0;
+  font-size:12px;font-weight:700;letter-spacing:.04em;
+}
+.sb-reset{
+  background:none;border:none;color:#6b8fa8;font-size:10px;
+  cursor:pointer;padding:2px 5px;border-radius:3px;transition:all .15s;
+}
+.sb-reset:hover{color:#e74c3c}
+.sb-section{padding:10px 12px 6px;border-bottom:1px solid #3d5166;flex-shrink:0}
+.sb-section-grow{
+  padding:10px 12px 0;flex:1;min-height:0;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sb-title{
+  font-size:9px;text-transform:uppercase;letter-spacing:1.5px;
+  color:#6b8fa8;margin-bottom:6px;font-weight:700;
+}
+.sb-search input{
+  width:100%;background:#1e2f3d;border:1px solid #3d5166;
+  color:#e0e8f0;border-radius:4px;padding:5px 8px;
+  font-size:11px;outline:none;font-family:inherit;
+}
+.sb-search input::placeholder{color:#4a6880}
+.sb-search input:focus{border-color:#3498db}
+.sb-item{
+  display:flex;align-items:center;gap:7px;
+  padding:4px 2px;cursor:pointer;font-size:11px;color:#a8c0d0;
+  -webkit-user-select:none;user-select:none;
+}
+.sb-item:hover{color:#e0e8f0}
+.sb-item input[type=checkbox]{
+  width:13px;height:13px;accent-color:#3498db;flex-shrink:0;cursor:pointer;
+}
+.sb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sb-dot-未着手{background:#5B9BD5}.sb-dot-進行中{background:#ED7D31}
+.sb-dot-完了  {background:#70AD47}.sb-dot-保留  {background:#FFC000}
+.sb-scroll{flex:1;overflow-y:auto;padding-bottom:8px}
+.sb-scroll::-webkit-scrollbar{width:3px}
+.sb-scroll::-webkit-scrollbar-thumb{background:#3d5166;border-radius:2px}
+.sb-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.sb-title-row .sb-title{margin-bottom:0}
+.sb-ctrl-row{display:flex;gap:3px}
+.sb-ctrl-btn{
+  background:#1e2f3d;border:1px solid #3d5166;color:#8fa8be;
+  font-size:9px;border-radius:3px;padding:1px 5px;cursor:pointer;transition:all .15s;
+}
+.sb-ctrl-btn:hover{background:#3d5166;color:#e0e8f0}
+.sb-section-list{
+  padding:10px 12px 6px;border-bottom:1px solid #3d5166;flex-shrink:0;
+  display:flex;flex-direction:column;
+}
+.sb-section-list .sb-scroll{max-height:88px}
+.sb-footer{
+  padding:8px 12px;border-top:1px solid #3d5166;flex-shrink:0;
+  font-size:11px;color:#3498db;font-weight:700;
+}
+
+/* ── Column filter button ───────────────────────────── */
+.th-inner{display:flex;align-items:center;gap:4px;justify-content:space-between}
+.col-name{flex:1}
+.filter-btn{
+  width:16px;height:16px;border-radius:3px;background:none;border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:#bbb;font-size:9px;flex-shrink:0;transition:all .1s;
+}
+.filter-btn:hover{background:#dde;color:#555}
+.filter-btn svg{display:block;pointer-events:none}
+th.col-filtered{color:#2471a3}
+th.col-filtered .filter-btn{color:#2471a3}
+
+/* ── Filter popup ───────────────────────────────────── */
+.filter-popup{
+  position:fixed;background:#1e2f3d;border:1px solid #3d5166;border-radius:8px;
+  padding:10px;z-index:2000;width:210px;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);display:none;
+}
+.filter-popup.fp-open{display:block}
+.filter-popup.fp-date-mode{width:278px}
+.fp-btns{display:flex;gap:6px;margin-top:8px;border-top:1px solid #2c3e50;padding-top:8px}
+.fp-btn{flex:1;padding:5px 0;border-radius:4px;border:none;font-size:11px;font-weight:700;cursor:pointer}
+.fp-ok{background:#2980b9;color:#fff}.fp-ok:hover{background:#3498db}
+.fp-cancel{background:#2c3e50;color:#a8c0d0;border:1px solid #3d5166}.fp-cancel:hover{background:#3d5166;color:#fff}
+.fp-clear{background:none;color:#e74c3c;border:1px solid #e74c3c;font-size:10px;padding:5px 8px;flex:none}
+.fp-clear:hover{background:#e74c3c;color:#fff}
+.fp-search{
+  width:100%;background:#141f2b;border:1px solid #3d5166;border-radius:4px;
+  color:#e0e8f0;padding:5px 8px;font-size:12px;margin-bottom:8px;outline:none;
+}
+.fp-search:focus{border-color:#3498db}
+.fp-all{
+  display:flex;align-items:center;gap:7px;padding:4px 6px;
+  border-bottom:1px solid #2c3e50;margin-bottom:4px;cursor:pointer;border-radius:3px;
+}
+.fp-all:hover{background:#253647}
+.fp-all label{cursor:pointer;font-size:12px;color:#a8c0d0;font-weight:700}
+.fp-list{max-height:180px;overflow-y:auto}
+.fp-list::-webkit-scrollbar{width:4px}
+.fp-list::-webkit-scrollbar-thumb{background:#3d5166;border-radius:2px}
+.fp-item{display:flex;align-items:center;gap:7px;padding:4px 6px;cursor:pointer;border-radius:3px}
+.fp-item:hover{background:#253647}
+.fp-item label{cursor:pointer;font-size:12px;color:#c8d8e8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fp-item input[type=checkbox],.fp-all input[type=checkbox]{
+  accent-color:#3498db;width:13px;height:13px;flex-shrink:0;cursor:pointer;
+}
+.fp-empty{color:#6b8fa8;font-size:11px;padding:8px 6px;text-align:center}
+#fp-date-section{display:none}
+.fp-range-hint{
+  font-size:11px;text-align:center;padding:5px 6px;
+  background:#141f2b;border-radius:5px;margin-bottom:8px;
+  color:#6b8fa8;border:1px solid #2c3e50;letter-spacing:.3px;
+  min-height:28px;display:flex;align-items:center;justify-content:center;
+}
+.fp-range-hint.fp-selecting{color:#f39c12;border-color:#e67e22}
+.fp-range-hint.fp-complete  {color:#2ecc71;border-color:#27ae60}
+.fp-mc-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.fp-mc-nav{
+  background:#2c3e50;border:1px solid #3d5166;color:#a8c0d0;
+  border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;
+}
+.fp-mc-nav:hover{background:#3d5166;color:#fff}
+.fp-date-body{display:flex;gap:8px}
+.fp-cal-year-col{display:flex;flex-direction:column;align-items:stretch;gap:3px;flex-shrink:0;width:50px}
+.fp-cal-year-list{display:flex;flex-direction:column;gap:2px;overflow-y:auto;max-height:156px}
+.fp-cal-year-list::-webkit-scrollbar{width:0}
+.fp-ys-btn{
+  background:#2c3e50;border:1px solid #3d5166;border-radius:4px;
+  color:#a8c0d0;padding:4px 0;font-size:11px;cursor:pointer;
+  text-align:center;flex-shrink:0;width:100%;
+}
+.fp-ys-btn:hover{background:#3d5166;color:#fff}
+.fp-ys-btn.cur{background:#1e4a70;border-color:#3498db;color:#74b9ff;font-weight:700}
+.fp-cal-body{flex:1;min-width:0}
+.fp-today-row{margin-bottom:6px;text-align:center}
+.fp-today-btn{
+  background:#1e4a70;border:1px solid #3498db;color:#74b9ff;
+  border-radius:4px;padding:3px 18px;font-size:11px;font-weight:700;cursor:pointer;
+}
+.fp-today-btn:hover{background:#2980b9;color:#fff}
+.fp-month-btn{
+  background:none;border:1px solid transparent;border-radius:4px;
+  color:#e0e8f0;font-size:13px;font-weight:700;cursor:pointer;
+  padding:2px 10px;transition:all .1s;
+}
+.fp-month-btn:hover{background:#34495e;border-color:#3d5166}
+.fp-mc-week{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px}
+.fp-mc-wday{text-align:center;font-size:9px;color:#6b8fa8;padding:2px 0;font-weight:700}
+.fp-mc-wday:first-child{color:#e25555}
+.fp-mc-wday:last-child {color:#5b9bd5}
+.fp-mc-days{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.fp-mc-day{
+  text-align:center;font-size:11px;padding:5px 2px;cursor:pointer;
+  border-radius:3px;color:#c8d8e8;transition:background .08s;
+}
+.fp-mc-day:hover:not(.fp-other-month){background:#34495e}
+.fp-mc-day.fp-other-month{color:#3a4f63;cursor:pointer}
+.fp-mc-day.fp-other-month:hover{background:#2a3b4a}
+.fp-mc-day.fp-today{color:#3498db;font-weight:700}
+.fp-mc-day.fp-in-range    {background:rgba(41,128,185,.25);border-radius:0;color:#c8d8e8}
+.fp-mc-day.fp-range-start {background:#2980b9;color:#fff;font-weight:700;border-radius:4px 0 0 4px}
+.fp-mc-day.fp-range-end   {background:#2980b9;color:#fff;font-weight:700;border-radius:0 4px 4px 0}
+.fp-mc-day.fp-range-start.fp-range-end{border-radius:4px}
+.fp-mc-day.fp-preview-in-range{background:rgba(41,128,185,.12);border-radius:0;color:#a8c0d0}
+.fp-mc-day.fp-preview-end {background:#34495e;color:#e0e8f0;font-weight:700;border-radius:0 4px 4px 0;outline:1px dashed #5b8db8}
+.fp-mc-day.fp-sun{color:#e25555}
+.fp-mc-day.fp-sat{color:#5b9bd5}
+.fp-mc-day.fp-range-start,.fp-mc-day.fp-range-end,.fp-mc-day.fp-range-start.fp-range-end{color:#fff}
+
+/* ── Toast ──────────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:24px;right:24px;
+  background:#2c3e50;color:#fff;
+  padding:10px 18px;border-radius:6px;font-size:13px;
+  opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;
+}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- ══ TAB BAR ══ -->
+<div id="tab-bar">
+  <button type="button" id="tab-btn-task"     class="tab-btn active" onclick="switchTab('task')">タスク</button>
+  <button type="button" id="tab-btn-tool"     class="tab-btn"        onclick="switchTab('tool')">ツール</button>
+  <button type="button" id="tab-btn-assignee" class="tab-btn"        onclick="switchTab('assignee')">担当者</button>
+</div>
+
+<div id="main-area">
+
+<!-- ══════════ TASK TAB ══════════ -->
+<div id="tab-task" class="tab-pane active">
+
+<aside id="filter-sidebar">
+  <div class="sb-hdr">
+    <span>フィルタ</span>
+    <button type="button" class="sb-reset" onclick="clearTaskFilters()" title="リセット">✕</button>
+  </div>
+  <div class="sb-section">
+    <div class="sb-title">タスク名</div>
+    <div class="sb-search">
+      <input type="text" id="filter-name" placeholder="🔍 検索…" oninput="applyTaskFilter()" autocomplete="off">
+    </div>
+  </div>
+  <div class="sb-section">
+    <div class="sb-title">ステータス</div>
+    <div id="filter-status-list">
+      <label class="sb-item"><input type="checkbox" value="未着手" onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-未着手"></span>未着手</label>
+      <label class="sb-item"><input type="checkbox" value="進行中" onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-進行中"></span>進行中</label>
+      <label class="sb-item"><input type="checkbox" value="完了"   onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-完了"></span>完了</label>
+      <label class="sb-item"><input type="checkbox" value="保留"   onchange="applyTaskFilter()" checked><span class="sb-dot sb-dot-保留"></span>保留</label>
+    </div>
+  </div>
+  <div class="sb-section-list">
+    <div class="sb-title-row">
+      <span class="sb-title">Tool</span>
+      <div class="sb-ctrl-row">
+        <button type="button" class="sb-ctrl-btn" onclick="selectAllFilter('filter-tool-list')">全</button>
+        <button type="button" class="sb-ctrl-btn" onclick="clearFilter('filter-tool-list')">解</button>
+      </div>
+    </div>
+    <div id="filter-tool-list" class="sb-scroll"></div>
+  </div>
+  <div class="sb-section-grow">
+    <div class="sb-title-row">
+      <span class="sb-title">担当者</span>
+      <div class="sb-ctrl-row">
+        <button type="button" class="sb-ctrl-btn" onclick="selectAllFilter('filter-assignee-list')">全</button>
+        <button type="button" class="sb-ctrl-btn" onclick="clearFilter('filter-assignee-list')">解</button>
+      </div>
+    </div>
+    <div id="filter-assignee-list" class="sb-scroll"></div>
+  </div>
+  <div class="sb-footer"><span id="task-count"></span></div>
+</aside>
+
+<div id="task-main">
+  <section id="gantt-section" class="panel">
+    <div class="panel-hdr">
+      <span class="flex">ガントチャート</span>
+      <button type="button" class="nav-btn" onclick="prevMonth()">◀</button>
+      <div class="month-picker-wrap">
+        <button type="button" class="cal-trigger" id="month-picker-trigger" onclick="toggleMonthPicker()" title="年月を選択">
+          <span id="month-label"></span>
+          <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#8fa8be" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+        <div class="cal-popup" id="month-picker-popup">
+          <div class="year-strip" id="picker-year-strip"></div>
+          <div class="month-grid-big" id="picker-month-grid"></div>
+        </div>
+      </div>
+      <button type="button" class="nav-btn" onclick="nextMonth()">▶</button>
+      <button type="button" class="nav-btn today" onclick="goToday()">今月</button>
+    </div>
+    <div id="gantt-header-outer"><canvas id="gantt-header-canvas"></canvas></div>
+    <div id="gantt-body-outer">  <canvas id="gantt-body-canvas"></canvas></div>
+  </section>
+
+  <div id="bottom">
+    <!-- Task editor: 担当者 → Tool → タスク名 → 開始日 → 終了日 → ステータス → メモ -->
+    <section id="editor-section" class="panel">
+      <div class="panel-hdr"><span class="flex">タスク編集</span></div>
+      <div class="editor-body">
+        <div class="editor-row-2col">
+          <div>
+            <div class="field-label">担当者</div>
+            <select id="f-assignee" title="担当者"></select>
+          </div>
+          <div>
+            <div class="field-label">Tool</div>
+            <select id="f-tool" title="Tool"></select>
+          </div>
+        </div>
+
+        <div class="field-label">タスク名 *</div>
+        <input type="text" id="f-name" placeholder="タスク名を入力">
+
+        <div class="editor-row-2col">
+          <div>
+            <div class="field-label">依頼日</div>
+            <input type="date" id="f-request" title="依頼日">
+          </div>
+          <div>
+            <div class="field-label">着手日 *</div>
+            <input type="date" id="f-start" title="着手日">
+          </div>
+        </div>
+        <div class="editor-row-2col">
+          <div>
+            <div class="field-label">配布日</div>
+            <input type="date" id="f-dist" title="配布日">
+          </div>
+          <div>
+            <div class="field-label">完了日 *</div>
+            <input type="date" id="f-end" title="完了日">
+          </div>
+        </div>
+
+        <div class="editor-row-2col">
+          <div>
+            <div class="field-label">実施日</div>
+            <input type="date" id="f-impl-date" title="実施日">
+          </div>
+          <div></div>
+        </div>
+
+        <div class="field-label">メモ</div>
+        <textarea id="f-desc" placeholder="メモを入力…"></textarea>
+
+        <div class="btn-row">
+          <button type="button" class="btn btn-add"    id="btn-add"    onclick="addTask()">追加</button>
+          <button type="button" class="btn btn-update" id="btn-update" onclick="updateTask()" disabled>更新</button>
+          <button type="button" class="btn btn-delete" id="btn-delete" onclick="deleteTask()" disabled>削除</button>
+          <button type="button" class="btn btn-clear"                  onclick="clearTaskForm()">クリア</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Task list: ID → 担当者 → Tool → タスク名 → 開始日 → 終了日 → ステータス → 優先度 -->
+    <section id="list-section" class="panel">
+      <div class="panel-hdr"><span class="flex">タスク一覧</span></div>
+      <div id="list-wrap">
+        <table>
+          <thead><tr>
+            <th onclick="sortTaskBy('id')" data-col="id" class="col-id">ID</th>
+            <th onclick="sortTaskBy('assignee')" data-col="assignee" class="col-asgn"><div class="th-inner"><span class="col-name">担当者</span><button type="button" class="filter-btn" onclick="fpOpen(event,'assignee')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('tool')" data-col="tool" class="col-tool"><div class="th-inner"><span class="col-name">Tool</span><button type="button" class="filter-btn" onclick="fpOpen(event,'tool')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('name')" data-col="name"><div class="th-inner"><span class="col-name">タスク名</span><button type="button" class="filter-btn" onclick="fpOpen(event,'name')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('implementation_date')" data-col="implementation_date" class="col-date"><div class="th-inner"><span class="col-name">実施日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'implementation_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('request_date')" data-col="request_date" class="col-date"><div class="th-inner"><span class="col-name">依頼日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'request_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('start_date')" data-col="start_date" class="col-date"><div class="th-inner"><span class="col-name">着手日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'start_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('distribution_date')" data-col="distribution_date" class="col-date"><div class="th-inner"><span class="col-name">配布日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'distribution_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+            <th onclick="sortTaskBy('end_date')" data-col="end_date" class="col-date"><div class="th-inner"><span class="col-name">完了日</span><button type="button" class="filter-btn" onclick="fpOpen(event,'end_date')" title="フィルタ"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M0 0h10L6.5 4.5v5l-3-1.5V4.5z"/></svg></button></div></th>
+          </tr></thead>
+          <tbody id="task-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div><!-- /task-main -->
+</div><!-- /tab-task -->
+
+<!-- ══════════ TOOL TAB ══════════ -->
+<div id="tab-tool" class="tab-pane">
+  <section class="panel side-editor">
+    <div class="panel-hdr"><span class="flex">ツール編集</span></div>
+    <div class="editor-body">
+      <div class="field-label">ツール名 *</div>
+      <input type="text" id="ft-name" placeholder="例: 001_GitHub">
+      <div class="btn-row">
+        <button type="button" class="btn btn-add"    id="t-btn-add"    onclick="addTool()">追加</button>
+        <button type="button" class="btn btn-update" id="t-btn-update" onclick="updateTool()" disabled>更新</button>
+        <button type="button" class="btn btn-delete" id="t-btn-delete" onclick="deleteTool()" disabled>削除</button>
+        <button type="button" class="btn btn-clear"                    onclick="clearToolForm()">クリア</button>
+      </div>
+    </div>
+  </section>
+  <section class="panel side-list">
+    <div class="panel-hdr">
+      <span class="flex">ツール一覧</span>
+      <span id="tool-count" class="badge"></span>
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="tool-search" placeholder="🔍 ツール名で絞り込み…" oninput="renderToolList()" autocomplete="off">
+    </div>
+    <div class="scroll-list">
+      <table>
+        <thead><tr>
+          <th onclick="sortToolBy('id')"   data-tcol="id"   class="col-tid">ID</th>
+          <th onclick="sortToolBy('name')" data-tcol="name">ツール名</th>
+        </tr></thead>
+        <tbody id="tool-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════ ASSIGNEE TAB ══════════ -->
+<div id="tab-assignee" class="tab-pane">
+  <section class="panel side-editor">
+    <div class="panel-hdr"><span class="flex">担当者編集</span></div>
+    <div class="editor-body">
+      <div class="field-label">担当者名 *</div>
+      <input type="text" id="fa-name" placeholder="担当者名を入力">
+      <div class="btn-row">
+        <button type="button" class="btn btn-add"    id="a-btn-add"    onclick="addAssignee()">追加</button>
+        <button type="button" class="btn btn-update" id="a-btn-update" onclick="updateAssignee()" disabled>更新</button>
+        <button type="button" class="btn btn-delete" id="a-btn-delete" onclick="deleteAssignee()" disabled>削除</button>
+        <button type="button" class="btn btn-clear"                    onclick="clearAssigneeForm()">クリア</button>
+      </div>
+    </div>
+  </section>
+  <section class="panel side-list">
+    <div class="panel-hdr">
+      <span class="flex">担当者一覧</span>
+      <span id="assignee-count" class="badge"></span>
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="assignee-search" placeholder="🔍 担当者名で絞り込み…" oninput="renderAssigneeList()" autocomplete="off">
+    </div>
+    <div class="scroll-list">
+      <table>
+        <thead><tr>
+          <th onclick="sortAssigneeBy('id')"   data-acol="id"   class="col-tid">ID</th>
+          <th onclick="sortAssigneeBy('name')" data-acol="name">担当者名</th>
+        </tr></thead>
+        <tbody id="assignee-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+</div><!-- /main-area -->
+<!-- ══════════ FILTER POPUP ══════════ -->
+<div class="filter-popup" id="filter-popup">
+  <!-- テキスト列用 -->
+  <div id="fp-text-section">
+    <input type="text" class="fp-search" id="fp-search" placeholder="🔍 検索…" oninput="fpRenderList()">
+    <div class="fp-all">
+      <input type="checkbox" id="fp-all-cb" onchange="fpToggleAll(this.checked)">
+      <label for="fp-all-cb">（すべて選択）</label>
+    </div>
+    <div class="fp-list" id="fp-list"></div>
+  </div>
+  <!-- 日付列用 -->
+  <div id="fp-date-section">
+    <div class="fp-today-row">
+      <button type="button" class="fp-today-btn" onclick="fpGoToday()">今日</button>
+    </div>
+    <div class="fp-range-hint" id="fp-range-hint">開始日をクリック</div>
+    <div class="fp-date-body">
+      <div class="fp-cal-year-col">
+        <button type="button" class="fp-mc-nav" onclick="fpYearNav(-1)">▲</button>
+        <div class="fp-cal-year-list" id="fp-cal-year-strip"></div>
+        <button type="button" class="fp-mc-nav" onclick="fpYearNav(1)">▼</button>
+      </div>
+      <div class="fp-cal-body">
+        <div class="fp-mc-hdr">
+          <button type="button" class="fp-mc-nav" onclick="fpCalNav(-1)">◀</button>
+          <button type="button" class="fp-month-btn" id="fp-month-btn" onclick="fpSelectWholeMonth()" title="この月全体を選択"></button>
+          <button type="button" class="fp-mc-nav" onclick="fpCalNav(1)">▶</button>
+        </div>
+        <div class="fp-mc-week">
+          <div class="fp-mc-wday">日</div><div class="fp-mc-wday">月</div><div class="fp-mc-wday">火</div>
+          <div class="fp-mc-wday">水</div><div class="fp-mc-wday">木</div><div class="fp-mc-wday">金</div>
+          <div class="fp-mc-wday">土</div>
+        </div>
+        <div class="fp-mc-days" id="fp-mc-days"></div>
+      </div>
+    </div>
+  </div>
+  <div class="fp-btns">
+    <button type="button" class="fp-btn fp-clear"  onclick="fpClear()">クリア</button>
+    <button type="button" class="fp-btn fp-cancel" onclick="fpClose()">キャンセル</button>
+    <button type="button" class="fp-btn fp-ok"     onclick="fpApply()">OK</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   State
+═══════════════════════════════════════════════ */
+let tasks          = [];
+let toolList       = [];
+let assigneeList   = [];
+let selectedTaskId     = null;
+let selectedToolId     = null;
+let selectedAssigneeId = null;
+
+// ── Column filter ─────────────────────────────────────
+const TASK_COLS = [
+  {key:"assignee",            label:"担当者",  type:"text"},
+  {key:"tool",                label:"Tool",   type:"text"},
+  {key:"name",                label:"タスク名",type:"text"},
+  {key:"implementation_date", label:"実施日",  type:"date"},
+  {key:"request_date",        label:"依頼日",  type:"date"},
+  {key:"start_date",          label:"着手日",  type:"date"},
+  {key:"distribution_date",   label:"配布日",  type:"date"},
+  {key:"end_date",            label:"完了日",  type:"date"},
+];
+const taskColFilters = {};
+TASK_COLS.forEach(c => taskColFilters[c.key] = null);
+
+let viewDate = new Date(); viewDate.setDate(1);
+let _ganttTasks = [];
+let taskSortKey = null,     taskSortAsc     = true;
+let toolSortKey = null,     toolSortAsc     = true;
+let assigneeSortKey = null, assigneeSortAsc = true;
+
+const STATUS_COLOR = {"未着手":"#5B9BD5","進行中":"#ED7D31","完了":"#70AD47","保留":"#FFC000"};
+const PRI_ORDER    = {"高":0,"中":1,"低":2};
+
+// Gantt layout: 担当者 | Tool | タスク名 | 稼働日
+const ASGN_W  = 74;
+const TOOL_W  = 128;   // タスク一覧 .col-tool(130px) に合わせて拡大
+const NAME_W  = 212;
+const WDAY_W  = 44;
+const LABEL_W = ASGN_W + TOOL_W + NAME_W + WDAY_W;  // 352
+const DAY_W = 24, TASK_H = 30, PAD = 6, HDR_H = 58;
+const DOW_JP = ["","月","火","水","木","金"];
+
+/* ═══════════════════════════════════════════════
+   Tab switching
+═══════════════════════════════════════════════ */
+function switchTab(tab) {
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b  => b.classList.remove("active"));
+  document.getElementById("tab-" + tab).classList.add("active");
+  document.getElementById("tab-btn-" + tab).classList.add("active");
+  if (tab === "task")     { refreshDataLists(); drawGantt(); }
+  if (tab === "tool")     { renderToolList(); }
+  if (tab === "assignee") { renderAssigneeList(); }
+}
+
+/* ═══════════════════════════════════════════════
+   API helper
+═══════════════════════════════════════════════ */
+async function api(url, opts={}) {
+  const res = await fetch(url, {
+    headers:{"Content-Type":"application/json"},
+    ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  return res.json();
+}
+
+/* ═══════════════════════════════════════════════
+   DataList refresh
+═══════════════════════════════════════════════ */
+function refreshDataLists() {
+  const toolSel  = document.getElementById("f-tool");
+  const asgnSel  = document.getElementById("f-assignee");
+  const curTool  = toolSel.value;
+  const curAsgn  = asgnSel.value;
+  toolSel.innerHTML  = '<option value="">-- なし --</option>' +
+    toolList.map(t  => `<option value="${esc(t.name)}">${esc(t.name)}</option>`).join("");
+  asgnSel.innerHTML  = '<option value="">-- なし --</option>' +
+    assigneeList.map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join("");
+  toolSel.value  = curTool;
+  asgnSel.value  = curAsgn;
+}
+
+/* ═══════════════════════════════════════════════
+   Tools
+═══════════════════════════════════════════════ */
+async function loadTools() {
+  const data = await api("/api/tools");
+  toolList = data.tools || [];
+  updateToolFilter();
+}
+
+async function addTool() {
+  const name = document.getElementById("ft-name").value.trim();
+  if (!name) { toast("ツール名を入力してください"); return; }
+  const t = await api("/api/tools", {method:"POST",body:{name}});
+  toolList.push(t); clearToolForm(); renderToolList(); refreshDataLists(); updateToolFilter();
+  toast("ツールを追加しました");
+}
+async function updateTool() {
+  if (!selectedToolId) return;
+  const name = document.getElementById("ft-name").value.trim();
+  if (!name) { toast("ツール名を入力してください"); return; }
+  const t = await api(`/api/tools/${selectedToolId}`, {method:"PUT",body:{name}});
+  toolList = toolList.map(x => x.id===selectedToolId ? t : x);
+  renderToolList(); refreshDataLists(); updateToolFilter(); toast("ツールを更新しました");
+}
+async function deleteTool() {
+  if (!selectedToolId) return;
+  const nm = toolList.find(t=>t.id===selectedToolId)?.name||"";
+  if (!confirm(`「${nm}」を削除しますか？`)) return;
+  await api(`/api/tools/${selectedToolId}`,{method:"DELETE"});
+  toolList = toolList.filter(t=>t.id!==selectedToolId);
+  clearToolForm(); renderToolList(); refreshDataLists(); updateToolFilter(); toast("ツールを削除しました");
+}
+function selectTool(id) {
+  selectedToolId = id;
+  const t = toolList.find(x=>x.id===id); if (!t) return;
+  document.getElementById("ft-name").value = t.name;
+  document.getElementById("t-btn-add").disabled    = true;
+  document.getElementById("t-btn-update").disabled = false;
+  document.getElementById("t-btn-delete").disabled = false;
+  document.querySelectorAll("#tool-tbody tr").forEach(r=>
+    r.classList.toggle("selected", +r.dataset.id===id));
+}
+function clearToolForm() {
+  document.getElementById("ft-name").value = "";
+  selectedToolId = null;
+  document.getElementById("t-btn-add").disabled    = false;
+  document.getElementById("t-btn-update").disabled = true;
+  document.getElementById("t-btn-delete").disabled = true;
+  document.querySelectorAll("#tool-tbody tr").forEach(r=>r.classList.remove("selected"));
+}
+function sortToolBy(col) {
+  if (toolSortKey===col) toolSortAsc=!toolSortAsc; else {toolSortKey=col;toolSortAsc=true;}
+  document.querySelectorAll("th[data-tcol]").forEach(th=>{
+    th.classList.remove("sorted-asc","sorted-desc");
+    if(th.dataset.tcol===col) th.classList.add(toolSortAsc?"sorted-asc":"sorted-desc");
+  });
+  renderToolList();
+}
+function renderToolList() {
+  const q = (document.getElementById("tool-search")?.value||"").toLowerCase();
+  let list = toolList.filter(t=>!q||t.name.toLowerCase().includes(q));
+  if (toolSortKey) list.sort((a,b)=>{
+    const va=toolSortKey==="id"?a.id:a.name, vb=toolSortKey==="id"?b.id:b.name;
+    return toolSortAsc?(va<vb?-1:va>vb?1:0):(va<vb?1:va>vb?-1:0);
+  });
+  document.getElementById("tool-count").textContent =
+    q ? `${list.length}/${toolList.length}` : `${toolList.length}件`;
+  const tbody = document.getElementById("tool-tbody");
+  tbody.innerHTML = "";
+  for (const t of list) {
+    const tr = document.createElement("tr");
+    tr.dataset.id = t.id;
+    if (t.id===selectedToolId) tr.classList.add("selected");
+    tr.onclick = ()=>selectTool(t.id);
+    tr.innerHTML = `<td style="color:#888;font-size:12px">${t.id}</td><td>${esc(t.name)}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Tool click navigation (タスク一覧・ガント → ツールタブ)
+═══════════════════════════════════════════════ */
+function goToTool(name, ev) {
+  if (ev) ev.stopPropagation();
+  switchTab("tool");
+  const tool = toolList.find(t=>t.name===name);
+  if (!tool) return;
+  selectTool(tool.id);
+  // 検索をクリアしてリスト全表示にした上でスクロール
+  const srch = document.getElementById("tool-search");
+  if (srch) srch.value = "";
+  renderToolList();
+  setTimeout(()=>{
+    const row = document.querySelector(`#tool-tbody tr[data-id="${tool.id}"]`);
+    if (row) row.scrollIntoView({behavior:"smooth",block:"center"});
+  }, 30);
+}
+
+/* ═══════════════════════════════════════════════
+   Assignees
+═══════════════════════════════════════════════ */
+async function loadAssignees() {
+  const data = await api("/api/assignees");
+  assigneeList = data.assignees || [];
+  updateAssigneeFilter();
+}
+async function addAssignee() {
+  const name = document.getElementById("fa-name").value.trim();
+  if (!name) { toast("担当者名を入力してください"); return; }
+  const a = await api("/api/assignees",{method:"POST",body:{name}});
+  assigneeList.push(a); clearAssigneeForm(); renderAssigneeList(); refreshDataLists(); updateAssigneeFilter();
+  toast("担当者を追加しました");
+}
+async function updateAssignee() {
+  if (!selectedAssigneeId) return;
+  const name = document.getElementById("fa-name").value.trim();
+  if (!name) { toast("担当者名を入力してください"); return; }
+  const a = await api(`/api/assignees/${selectedAssigneeId}`,{method:"PUT",body:{name}});
+  assigneeList = assigneeList.map(x=>x.id===selectedAssigneeId?a:x);
+  renderAssigneeList(); refreshDataLists(); updateAssigneeFilter(); toast("担当者を更新しました");
+}
+async function deleteAssignee() {
+  if (!selectedAssigneeId) return;
+  const nm = assigneeList.find(a=>a.id===selectedAssigneeId)?.name||"";
+  if (!confirm(`「${nm}」を削除しますか？`)) return;
+  await api(`/api/assignees/${selectedAssigneeId}`,{method:"DELETE"});
+  assigneeList = assigneeList.filter(a=>a.id!==selectedAssigneeId);
+  clearAssigneeForm(); renderAssigneeList(); refreshDataLists(); updateAssigneeFilter(); toast("担当者を削除しました");
+}
+function selectAssignee(id) {
+  selectedAssigneeId = id;
+  const a = assigneeList.find(x=>x.id===id); if (!a) return;
+  document.getElementById("fa-name").value = a.name;
+  document.getElementById("a-btn-add").disabled    = true;
+  document.getElementById("a-btn-update").disabled = false;
+  document.getElementById("a-btn-delete").disabled = false;
+  document.querySelectorAll("#assignee-tbody tr").forEach(r=>
+    r.classList.toggle("selected", +r.dataset.id===id));
+}
+function clearAssigneeForm() {
+  document.getElementById("fa-name").value = "";
+  selectedAssigneeId = null;
+  document.getElementById("a-btn-add").disabled    = false;
+  document.getElementById("a-btn-update").disabled = true;
+  document.getElementById("a-btn-delete").disabled = true;
+  document.querySelectorAll("#assignee-tbody tr").forEach(r=>r.classList.remove("selected"));
+}
+function sortAssigneeBy(col) {
+  if (assigneeSortKey===col) assigneeSortAsc=!assigneeSortAsc;
+  else {assigneeSortKey=col;assigneeSortAsc=true;}
+  document.querySelectorAll("th[data-acol]").forEach(th=>{
+    th.classList.remove("sorted-asc","sorted-desc");
+    if(th.dataset.acol===col) th.classList.add(assigneeSortAsc?"sorted-asc":"sorted-desc");
+  });
+  renderAssigneeList();
+}
+function renderAssigneeList() {
+  const q = (document.getElementById("assignee-search")?.value||"").toLowerCase();
+  let list = assigneeList.filter(a=>!q||a.name.toLowerCase().includes(q));
+  if (assigneeSortKey) list.sort((a,b)=>{
+    const va=assigneeSortKey==="id"?a.id:a.name, vb=assigneeSortKey==="id"?b.id:b.name;
+    return assigneeSortAsc?(va<vb?-1:va>vb?1:0):(va<vb?1:va>vb?-1:0);
+  });
+  document.getElementById("assignee-count").textContent =
+    q ? `${list.length}/${assigneeList.length}` : `${assigneeList.length}件`;
+  const tbody = document.getElementById("assignee-tbody");
+  tbody.innerHTML = "";
+  for (const a of list) {
+    const tr = document.createElement("tr");
+    tr.dataset.id = a.id;
+    if (a.id===selectedAssigneeId) tr.classList.add("selected");
+    tr.onclick = ()=>selectAssignee(a.id);
+    tr.innerHTML = `<td style="color:#888;font-size:12px">${a.id}</td><td>${esc(a.name)}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Tasks
+═══════════════════════════════════════════════ */
+async function loadTasks() {
+  const data = await api("/api/tasks");
+  tasks = data.tasks || [];
+  renderTaskList(); drawGantt();
+}
+function taskFormValues() {
+  return {
+    assignee:          document.getElementById("f-assignee").value,
+    tool:              document.getElementById("f-tool").value,
+    name:              document.getElementById("f-name").value.trim(),
+    implementation_date: document.getElementById("f-impl-date").value,
+    request_date:        document.getElementById("f-request").value,
+    start_date:          document.getElementById("f-start").value,
+    distribution_date:   document.getElementById("f-dist").value,
+    end_date:            document.getElementById("f-end").value,
+    description:       document.getElementById("f-desc").value.trim(),
+  };
+}
+function validateTask(v) {
+  if (!v.name)     {toast("タスク名を入力してください");return false;}
+  if (!v.start_date){toast("着手日を入力してください"); return false;}
+  if (!v.end_date)  {toast("完了日を入力してください"); return false;}
+  if (v.end_date<v.start_date){toast("完了日は着手日以降にしてください");return false;}
+  return true;
+}
+async function addTask() {
+  const v=taskFormValues(); if(!validateTask(v))return;
+  const t=await api("/api/tasks",{method:"POST",body:v});
+  if(t.error){toast(t.message||"エラーが発生しました");return;}
+  tasks.push(t); clearTaskForm(); renderTaskList(); drawGantt(); toast("タスクを追加しました");
+}
+async function updateTask() {
+  if(!selectedTaskId)return;
+  const v=taskFormValues(); if(!validateTask(v))return;
+  const t=await api(`/api/tasks/${selectedTaskId}`,{method:"PUT",body:v});
+  if(t.error){toast(t.message||"エラーが発生しました");return;}
+  tasks=tasks.map(x=>x.id===selectedTaskId?t:x);
+  renderTaskList(); drawGantt(); toast("タスクを更新しました");
+}
+async function deleteTask() {
+  if(!selectedTaskId)return;
+  const nm=tasks.find(t=>t.id===selectedTaskId)?.name||"";
+  if(!confirm(`「${nm}」を削除しますか？`))return;
+  await api(`/api/tasks/${selectedTaskId}`,{method:"DELETE"});
+  tasks=tasks.filter(t=>t.id!==selectedTaskId);
+  clearTaskForm(); renderTaskList(); drawGantt(); toast("タスクを削除しました");
+}
+function clearTaskForm() {
+  const today=new Date().toISOString().slice(0,10);
+  const week =new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+  ["f-name","f-desc"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("f-assignee").value   = "";
+  document.getElementById("f-tool").value       = "";
+  document.getElementById("f-impl-date").value  = "";
+  document.getElementById("f-request").value    = "";
+  document.getElementById("f-start").value      = today;
+  document.getElementById("f-dist").value       = "";
+  document.getElementById("f-end").value        = week;
+  selectedTaskId = null;
+  document.getElementById("btn-add").disabled    = false;
+  document.getElementById("btn-update").disabled = true;
+  document.getElementById("btn-delete").disabled = true;
+  document.querySelectorAll("#task-tbody tr").forEach(r=>r.classList.remove("selected"));
+}
+function selectTask(id) {
+  selectedTaskId = id;
+  const t=tasks.find(x=>x.id===id); if(!t)return;
+  document.getElementById("f-assignee").value = t.assignee||"";
+  document.getElementById("f-tool").value     = t.tool||"";
+  document.getElementById("f-name").value      = t.name;
+  document.getElementById("f-impl-date").value = t.implementation_date||"";
+  document.getElementById("f-request").value   = t.request_date||"";
+  document.getElementById("f-start").value     = t.start_date;
+  document.getElementById("f-dist").value     = t.distribution_date||"";
+  document.getElementById("f-end").value      = t.end_date;
+  document.getElementById("f-desc").value     = t.description||"";
+  document.getElementById("btn-add").disabled    = true;
+  document.getElementById("btn-update").disabled = false;
+  document.getElementById("btn-delete").disabled = false;
+  document.querySelectorAll("#task-tbody tr").forEach(r=>
+    r.classList.toggle("selected",+r.dataset.id===id));
+  // ガントチャートの選択行を同期
+  drawGanttBody(new Date(viewDate.getFullYear(),viewDate.getMonth(),1));
+  const taskIdx=_ganttTasks.findIndex(x=>x.id===id);
+  if(taskIdx>=0){
+    const gb=document.getElementById("gantt-body-outer");
+    const ty=taskIdx*(TASK_H+PAD);
+    const vis0=gb.scrollTop, vis1=gb.scrollTop+gb.clientHeight;
+    if(ty<vis0||ty+TASK_H>vis1) gb.scrollTop=Math.max(0,ty-gb.clientHeight/2+TASK_H/2);
+  }
+}
+function sortTaskBy(col) {
+  if(taskSortKey===col)taskSortAsc=!taskSortAsc;else{taskSortKey=col;taskSortAsc=true;}
+  document.querySelectorAll("th[data-col]").forEach(th=>{
+    th.classList.remove("sorted-asc","sorted-desc");
+    if(th.dataset.col===col)th.classList.add(taskSortAsc?"sorted-asc":"sorted-desc");
+  });
+  renderTaskList();
+}
+function filteredTasks() {
+  const allSt   = document.querySelectorAll('#filter-status-list input');
+  const chkSt   = [...allSt].filter(cb=>cb.checked).map(cb=>cb.value);
+  const allAsgn = document.querySelectorAll('#filter-assignee-list input');
+  const chkAsgn = [...allAsgn].filter(cb=>cb.checked).map(cb=>cb.value);
+  const allTool = document.querySelectorAll('#filter-tool-list input');
+  const chkTool = [...allTool].filter(cb=>cb.checked).map(cb=>cb.value);
+  const name    = (document.getElementById("filter-name")?.value||"").toLowerCase();
+  // 全チェック = フィルタなし / 0チェック = 全非表示
+  const filterSt   = allSt.length   > 0 && chkSt.length   < allSt.length;
+  const filterAsgn = allAsgn.length > 0 && chkAsgn.length < allAsgn.length;
+  const filterTool = allTool.length > 0 && chkTool.length < allTool.length;
+  return tasks.filter(t=>{
+    if (!name       || (t.name||"").toLowerCase().includes(name)) {} else return false;
+    if (!filterSt   || chkSt.includes(t.status))   {} else return false;
+    if (!filterAsgn || chkAsgn.includes(t.assignee)) {} else return false;
+    if (!filterTool || chkTool.includes(t.tool))    {} else return false;
+    // column header filters
+    for (const c of TASK_COLS) {
+      const f = taskColFilters[c.key];
+      if (!f) continue;
+      if (c.type === "date") {
+        const v = t[c.key] ?? "";
+        if (f.from && v < f.from) return false;
+        if (f.to   && v > f.to)   return false;
+      } else {
+        if (!f.has(String(t[c.key] ?? ""))) return false;
+      }
+    }
+    return true;
+  });
+}
+function applyTaskFilter() {
+  renderTaskList();
+  drawGanttBody(new Date(viewDate.getFullYear(),viewDate.getMonth(),1));
+}
+function clearTaskFilters() {
+  const el=document.getElementById("filter-name"); if(el) el.value="";
+  document.querySelectorAll('#filter-status-list input,#filter-assignee-list input,#filter-tool-list input')
+    .forEach(cb=>{cb.checked=true;});
+  applyTaskFilter();
+}
+function selectAllFilter(listId) {
+  document.querySelectorAll(`#${listId} input`).forEach(cb=>{cb.checked=true;});
+  applyTaskFilter();
+}
+function clearFilter(listId) {
+  document.querySelectorAll(`#${listId} input`).forEach(cb=>{cb.checked=false;});
+  applyTaskFilter();
+}
+function updateToolFilter() {
+  const c=document.getElementById("filter-tool-list"); if(!c) return;
+  const prev=c.querySelectorAll('input');
+  // 初回ビルドは全チェック、再ビルド時は既存状態を保持（新規追加分は全チェック）
+  const unchecked=prev.length>0 ? [...prev].filter(cb=>!cb.checked).map(cb=>cb.value) : [];
+  c.innerHTML=toolList.map(t=>`
+    <label class="sb-item">
+      <input type="checkbox" value="${esc(t.name)}" onchange="applyTaskFilter()"${unchecked.includes(t.name)?'':' checked'}>
+      <span>${esc(t.name)}</span>
+    </label>`).join('');
+}
+function updateAssigneeFilter() {
+  const c=document.getElementById("filter-assignee-list"); if(!c) return;
+  const prev=c.querySelectorAll('input');
+  const unchecked=prev.length>0 ? [...prev].filter(cb=>!cb.checked).map(cb=>cb.value) : [];
+  c.innerHTML=assigneeList.map(a=>`
+    <label class="sb-item">
+      <input type="checkbox" value="${esc(a.name)}" onchange="applyTaskFilter()"${unchecked.includes(a.name)?'':' checked'}>
+      <span>${esc(a.name)}</span>
+    </label>`).join('');
+}
+function sortedTasks() {
+  const base=filteredTasks();
+  if(!taskSortKey)return base;
+  return base.sort((a,b)=>{
+    let va=a[taskSortKey]||"",vb=b[taskSortKey]||"";
+    if(taskSortKey==="priority"){va=PRI_ORDER[va]??9;vb=PRI_ORDER[vb]??9;}
+    return taskSortAsc?(va<vb?-1:va>vb?1:0):(va<vb?1:va>vb?-1:0);
+  });
+}
+function renderTaskList() {
+  const list=sortedTasks();
+  const countEl=document.getElementById("task-count");
+  if(countEl) countEl.textContent=list.length<tasks.length?`${list.length}/${tasks.length}件`:`${tasks.length}件`;
+  const tbody=document.getElementById("task-tbody");
+  tbody.innerHTML="";
+  for(const t of list){
+    const tr=document.createElement("tr");
+    tr.dataset.id=t.id;
+    if(t.id===selectedTaskId)tr.classList.add("selected");
+    tr.onclick=()=>selectTask(t.id);
+    const toolHtml=t.tool
+      ?`<span class="tool-tag" onclick="goToTool(${JSON.stringify(t.tool)},event)">${esc(t.tool)}</span>`
+      :`<span style="color:#bbb">-</span>`;
+    tr.innerHTML=`
+      <td style="color:#888;font-size:12px">${t.id}</td>
+      <td>${esc(t.assignee||"-")}</td>
+      <td>${toolHtml}</td>
+      <td title="${esc(t.name)}">${esc(t.name)}</td>
+      <td style="color:#777">${t.implementation_date||"-"}</td>
+      <td style="color:#777">${t.request_date||"-"}</td>
+      <td>${t.start_date}</td>
+      <td style="color:#777">${t.distribution_date||"-"}</td>
+      <td>${t.end_date}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Gantt helpers
+═══════════════════════════════════════════════ */
+function buildWeekdays(vs,ve){
+  const days=[],cur=new Date(vs);
+  while(cur<ve){const d=cur.getDay();if(d!==0&&d!==6)days.push(new Date(cur));cur.setDate(cur.getDate()+1);}
+  return days;
+}
+function countWorkdays(s,e){
+  let n=0;const c=new Date(s);
+  while(c<=e){if(c.getDay()!==0&&c.getDay()!==6)n++;c.setDate(c.getDate()+1);}
+  return n;
+}
+function barStartIdx(wds,date){const t=date.getTime();for(let i=0;i<wds.length;i++)if(wds[i].getTime()>=t)return i;return wds.length;}
+function barEndIdx(wds,date){const t=date.getTime();for(let i=wds.length-1;i>=0;i--)if(wds[i].getTime()<=t)return i+1;return 0;}
+
+/* ═══════════════════════════════════════════════
+   Gantt draw
+═══════════════════════════════════════════════ */
+let _weekdays=[], _totalWd=0, _ganttCw=0;
+
+function drawGantt(){
+  const vs=new Date(viewDate.getFullYear(),viewDate.getMonth(),1);
+  const ve=new Date(viewDate.getFullYear(),viewDate.getMonth()+2,1);
+  _weekdays=buildWeekdays(vs,ve);
+  _totalWd=_weekdays.length;
+  _ganttCw=LABEL_W+_totalWd*DAY_W;
+  drawGanttHeader();
+  drawGanttBody(vs);
+}
+
+function drawGanttHeader(){
+  const canvas=document.getElementById("gantt-header-canvas");
+  const ctx=canvas.getContext("2d");
+  canvas.width=_ganttCw; canvas.height=HDR_H;
+  ctx.fillStyle="#fafafa"; ctx.fillRect(0,0,_ganttCw,HDR_H);
+
+  // ラベルヘッダー
+  ctx.fillStyle="#2c3e50"; ctx.fillRect(0,0,LABEL_W,HDR_H);
+  ctx.strokeStyle="#4a6278"; ctx.lineWidth=1;
+  [ASGN_W,ASGN_W+TOOL_W,ASGN_W+TOOL_W+NAME_W].forEach(x=>{
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,HDR_H);ctx.stroke();
+  });
+  ctx.fillStyle="#fff"; ctx.font="bold 11px 'Segoe UI','Meiryo',sans-serif"; ctx.textAlign="center";
+  ctx.fillText("担当者", ASGN_W/2,                          HDR_H/2+4);
+  ctx.fillText("Tool",  ASGN_W+TOOL_W/2,                   HDR_H/2+4);
+  ctx.fillText("タスク名",ASGN_W+TOOL_W+NAME_W/2,           HDR_H/2+4);
+  ctx.fillText("稼働日", ASGN_W+TOOL_W+NAME_W+WDAY_W/2,    HDR_H/2+4);
+
+  // 日付列
+  let prevM=-1,mStartX=LABEL_W,mLabel="";
+  for(let i=0;i<=_weekdays.length;i++){
+    const wd=_weekdays[i], x=LABEL_W+i*DAY_W, isMon=wd&&wd.getDay()===1;
+    if(i===_weekdays.length||(i>0&&wd.getMonth()!==prevM)){
+      const mw=x-mStartX;
+      ctx.fillStyle="#2c3e50"; ctx.fillRect(mStartX,0,mw,22);
+      ctx.fillStyle="#fff"; ctx.font="bold 11px 'Segoe UI','Meiryo',sans-serif"; ctx.textAlign="center";
+      ctx.fillText(mLabel,mStartX+mw/2,15);
+    }
+    if(i===_weekdays.length)break;
+    if(wd.getMonth()!==prevM){prevM=wd.getMonth();mStartX=x;mLabel=`${wd.getFullYear()}年${wd.getMonth()+1}月`;}
+    ctx.fillStyle=isMon?"#e8e8e8":"#f0f0f0"; ctx.fillRect(x,22,DAY_W,HDR_H-22);
+    ctx.strokeStyle=isMon?"#bbb":"#d8d8d8"; ctx.lineWidth=0.5; ctx.strokeRect(x,22,DAY_W,HDR_H-22);
+    ctx.fillStyle="#444"; ctx.font="10px 'Segoe UI','Meiryo',sans-serif"; ctx.textAlign="center";
+    ctx.fillText(wd.getDate(),x+DAY_W/2,35);
+    ctx.fillStyle="#888"; ctx.font="9px 'Segoe UI','Meiryo',sans-serif";
+    ctx.fillText(DOW_JP[wd.getDay()],x+DAY_W/2,51);
+  }
+}
+
+function drawGanttBody(vs){
+  const canvas=document.getElementById("gantt-body-canvas");
+  const ctx=canvas.getContext("2d");
+  _ganttTasks=filteredTasks();
+  const ch=Math.max(_ganttTasks.length,1)*(TASK_H+PAD)+16;
+  canvas.width=_ganttCw; canvas.height=ch;
+  ctx.fillStyle="#fafafa"; ctx.fillRect(0,0,_ganttCw,ch);
+
+  // グリッド線
+  for(let i=0;i<_weekdays.length;i++){
+    const x=LABEL_W+i*DAY_W, isMon=_weekdays[i].getDay()===1;
+    ctx.strokeStyle=isMon?"#ccc":"#e8e8e8"; ctx.lineWidth=isMon?1:0.5;
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,ch);ctx.stroke();
+  }
+
+  if(_ganttTasks.length===0){
+    ctx.fillStyle="#bbb"; ctx.font="14px 'Segoe UI','Meiryo',sans-serif";
+    ctx.textAlign="center"; ctx.fillText("タスクがありません",_ganttCw/2,60);
+    return;
+  }
+
+  _ganttTasks.forEach((task,i)=>{
+    const y=i*(TASK_H+PAD)+PAD/2;
+    const rf=task.id===selectedTaskId?"#dceeff":(i%2===0?"#fff":"#f5f8fc");
+    ctx.fillStyle=rf; ctx.fillRect(0,y,_ganttCw,TASK_H);
+
+    // 担当者列
+    ctx.fillStyle=rf; ctx.fillRect(0,y,ASGN_W,TASK_H);
+    ctx.strokeStyle="#e0e0e0"; ctx.lineWidth=0.5; ctx.strokeRect(0,y,ASGN_W,TASK_H);
+    if(task.assignee){
+      const an=task.assignee.length>6?task.assignee.slice(0,5)+"…":task.assignee;
+      ctx.fillStyle="#444"; ctx.font="10px 'Segoe UI','Meiryo',sans-serif"; ctx.textAlign="left";
+      ctx.fillText(an,6,y+TASK_H/2+4);
+    }
+
+    // Tool列
+    ctx.fillStyle=rf; ctx.fillRect(ASGN_W,y,TOOL_W,TASK_H);
+    ctx.strokeStyle="#e0e0e0"; ctx.lineWidth=0.5; ctx.strokeRect(ASGN_W,y,TOOL_W,TASK_H);
+    if(task.tool){
+      const toolTxt=task.tool.length>14?task.tool.slice(0,13)+"…":task.tool;
+      ctx.font="bold 10px 'Segoe UI','Meiryo',sans-serif";
+      const tw=Math.min(ctx.measureText(toolTxt).width+12,TOOL_W-8);
+      const tx=ASGN_W+4;
+      ctx.fillStyle="#eaf0fb";
+      ctx.beginPath();
+      if(ctx.roundRect)ctx.roundRect(tx,y+7,tw,TASK_H-14,3);else ctx.rect(tx,y+7,tw,TASK_H-14);
+      ctx.fill();
+      ctx.fillStyle="#2471a3"; ctx.textAlign="left";
+      ctx.fillText(toolTxt,tx+6,y+TASK_H/2+4);
+    }
+
+    // タスク名列
+    ctx.fillStyle=rf; ctx.fillRect(ASGN_W+TOOL_W,y,NAME_W,TASK_H);
+    ctx.strokeStyle="#e0e0e0"; ctx.lineWidth=0.5; ctx.strokeRect(ASGN_W+TOOL_W,y,NAME_W,TASK_H);
+    ctx.fillStyle="#2c3e50"; ctx.font="11px 'Segoe UI','Meiryo',sans-serif"; ctx.textAlign="left";
+    const maxNameChars=Math.floor(NAME_W/7);
+    const lbl=task.name.length>maxNameChars?task.name.slice(0,maxNameChars-1)+"…":task.name;
+    ctx.fillText(lbl,ASGN_W+TOOL_W+6,y+TASK_H/2+4);
+
+    // 稼働日列
+    const tS=parseDate(task.start_date),tE=parseDate(task.end_date),wd=countWorkdays(tS,tE);
+    ctx.fillStyle=rf; ctx.fillRect(ASGN_W+TOOL_W+NAME_W,y,WDAY_W,TASK_H);
+    ctx.strokeStyle="#e0e0e0"; ctx.lineWidth=0.5; ctx.strokeRect(ASGN_W+TOOL_W+NAME_W,y,WDAY_W,TASK_H);
+    ctx.fillStyle="#555"; ctx.font="bold 11px 'Segoe UI','Meiryo',sans-serif"; ctx.textAlign="center";
+    ctx.fillText(`${wd}日`,ASGN_W+TOOL_W+NAME_W+WDAY_W/2,y+TASK_H/2+4);
+
+    // バー（依頼日→着手日→配布日→完了日 暖色→寒色）
+    const tRq=task.request_date?parseDate(task.request_date):null;
+    const tDi=task.distribution_date?parseDate(task.distribution_date):null;
+    const barFrom=tRq||tS;
+    const siF=barStartIdx(_weekdays,barFrom),eiF=barEndIdx(_weekdays,tE);
+    const bx1=LABEL_W+siF*DAY_W,bx2=LABEL_W+eiF*DAY_W;
+    if(bx1<_ganttCw&&bx2>LABEL_W){
+      const bw=bx2-bx1;
+      const sel=task.id===selectedTaskId;
+      // 影
+      ctx.fillStyle="#ccc"; ctx.fillRect(bx1+2,y+7,bw,TASK_H-12);
+      // セグメント描画（依頼日→着手日: 橙, 着手日→配布日: 黄, 配布日→完了日: 青）
+      const seg=(d0,d1,col)=>{
+        const x0=LABEL_W+barStartIdx(_weekdays,d0)*DAY_W;
+        const x1=LABEL_W+barEndIdx(_weekdays,d1)*DAY_W;
+        if(x1>x0){ctx.fillStyle=col;ctx.fillRect(x0,y+5,x1-x0,TASK_H-10);}
+      };
+      if(sel){
+        if(tRq) seg(tRq,tS,"#ca6f1e");
+        seg(tS,tDi||tE,"#d4ac0d");
+        if(tDi) seg(tDi,tE,"#2471a3");
+        ctx.strokeStyle="#1a252f";ctx.lineWidth=2;ctx.strokeRect(bx1,y+5,bw,TASK_H-10);ctx.lineWidth=0.5;
+      } else {
+        if(tRq) seg(tRq,tS,"#e67e22");
+        seg(tS,tDi||tE,"#f1c40f");
+        if(tDi) seg(tDi,tE,"#3498db");
+      }
+      // バー内ラベル（影付き白字）
+      if(bw>44){
+        const bl=task.name.length>11?task.name.slice(0,10)+"…":task.name;
+        ctx.font="bold 10px 'Segoe UI','Meiryo',sans-serif"; ctx.textAlign="center";
+        ctx.fillStyle="rgba(0,0,0,0.45)"; ctx.fillText(bl,bx1+bw/2+1,y+TASK_H/2+5);
+        ctx.fillStyle="#fff";             ctx.fillText(bl,bx1+bw/2,y+TASK_H/2+4);
+      }
+    }
+  });
+
+  // 今日線
+  const today=new Date();today.setHours(0,0,0,0);
+  const ti=_weekdays.findIndex(w=>w.getTime()===today.getTime());
+  if(ti!==-1){
+    const tx=LABEL_W+ti*DAY_W+DAY_W/2;
+    ctx.strokeStyle="#e74c3c";ctx.lineWidth=2;ctx.setLineDash([5,3]);
+    ctx.beginPath();ctx.moveTo(tx,0);ctx.lineTo(tx,ch);ctx.stroke();
+    ctx.setLineDash([]);ctx.lineWidth=1;
+    ctx.fillStyle="#e74c3c";ctx.font="bold 10px 'Segoe UI','Meiryo',sans-serif";
+    ctx.textAlign="center";ctx.fillText("今日",tx,ch-4);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Gantt: ボディのTool列クリック → ツールタブへ
+═══════════════════════════════════════════════ */
+document.getElementById("gantt-body-canvas").addEventListener("click", e=>{
+  const rect=e.target.getBoundingClientRect();
+  const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  const idx=Math.floor(y/(TASK_H+PAD));
+  if(idx<0||idx>=_ganttTasks.length)return;
+  // タスク選択（一覧にも反映）
+  selectTask(_ganttTasks[idx].id);
+  const row=document.querySelector(`#task-tbody tr[data-id="${_ganttTasks[idx].id}"]`);
+  if(row)row.scrollIntoView({behavior:"smooth",block:"nearest"});
+  // Tool列クリック → ツールタブへ
+  if(x>=ASGN_W&&x<ASGN_W+TOOL_W&&_ganttTasks[idx].tool) goToTool(_ganttTasks[idx].tool);
+});
+document.getElementById("gantt-body-canvas").addEventListener("mousemove", e=>{
+  const rect=e.target.getBoundingClientRect();
+  const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  const idx=Math.floor(y/(TASK_H+PAD));
+  const inTool=x>=ASGN_W&&x<ASGN_W+TOOL_W&&idx>=0&&idx<_ganttTasks.length&&_ganttTasks[idx].tool;
+  e.target.style.cursor=inTool?"pointer":"default";
+});
+
+/* ═══════════════════════════════════════════════
+   Gantt navigation
+═══════════════════════════════════════════════ */
+function prevMonth(){viewDate.setMonth(viewDate.getMonth()-1);updateMonthLabel();drawGantt();}
+function nextMonth(){viewDate.setMonth(viewDate.getMonth()+1);updateMonthLabel();drawGantt();}
+function goToday(){viewDate=new Date();viewDate.setDate(1);updateMonthLabel();drawGantt();closeMonthPicker();}
+function updateMonthLabel(){
+  document.getElementById("month-label").textContent=
+    `${viewDate.getFullYear()}年${viewDate.getMonth()+1}月`;
+}
+
+/* ── Month picker ─────────────────────────────────── */
+let _pickerYear = null;
+
+function toggleMonthPicker() {
+  const popup   = document.getElementById("month-picker-popup");
+  const trigger = document.getElementById("month-picker-trigger");
+  const isOpen  = popup.classList.contains("open");
+  if (isOpen) {
+    closeMonthPicker();
+  } else {
+    _pickerYear = viewDate.getFullYear();
+    renderPickerYearStrip();
+    renderPickerMonthGrid();
+    popup.classList.add("open");
+    trigger.classList.add("open");
+    // 現在年が見えるようにスクロール
+    setTimeout(()=>{
+      const cur = document.querySelector("#picker-year-strip .ys.cur");
+      if (cur) cur.scrollIntoView({inline:"center", block:"nearest"});
+    }, 0);
+  }
+}
+function closeMonthPicker() {
+  document.getElementById("month-picker-popup").classList.remove("open");
+  document.getElementById("month-picker-trigger").classList.remove("open");
+}
+function renderPickerYearStrip() {
+  const baseY = new Date().getFullYear();
+  const strip = document.getElementById("picker-year-strip");
+  strip.innerHTML = Array.from({length:8}, (_,i)=> baseY - 2 + i).map(y =>
+    `<div class="ys${y===_pickerYear?' cur':''}" onclick="selectPickerYear(${y})">${y}</div>`
+  ).join('');
+}
+function renderPickerMonthGrid() {
+  const curY = viewDate.getFullYear(), curM = viewDate.getMonth() + 1;
+  document.getElementById("picker-month-grid").innerHTML =
+    Array.from({length:12}, (_,i) => {
+      const m = i + 1;
+      const isCur = _pickerYear === curY && m === curM;
+      return `<div class="mgb${isCur?' cur':''}" onclick="selectPickerMonth(${m})">${m}月</div>`;
+    }).join('');
+}
+function selectPickerYear(y) {
+  _pickerYear = y;
+  renderPickerYearStrip();
+  renderPickerMonthGrid();
+}
+function selectPickerMonth(m) {
+  viewDate = new Date(_pickerYear, m - 1, 1);
+  updateMonthLabel();
+  drawGantt();
+  closeMonthPicker();
+}
+
+/* ═══════════════════════════════════════════════
+   Column filter popup
+═══════════════════════════════════════════════ */
+let _fpCol      = null;
+let _fpState    = {};
+let _fpDateFrom = null;
+let _fpDateTo   = null;
+let _fpHoverDate= null;
+let _fpCalYear  = new Date().getFullYear();
+let _fpCalMonth = new Date().getMonth();
+
+function fpUpdateHeaders() {
+  TASK_COLS.forEach(c => {
+    const th = document.querySelector(`th[data-col="${c.key}"]`);
+    if (th) th.classList.toggle("col-filtered", taskColFilters[c.key] !== null);
+  });
+}
+
+function fpOpen(e, col) {
+  e.stopPropagation();
+  const popup = document.getElementById("filter-popup");
+  if (_fpCol === col && popup.classList.contains("fp-open")) { fpClose(); return; }
+  _fpCol = col;
+  const isDate = TASK_COLS.find(c => c.key === col)?.type === "date";
+  document.getElementById("fp-text-section").style.display = isDate ? "none"  : "block";
+  document.getElementById("fp-date-section").style.display = isDate ? "block" : "none";
+  popup.classList.toggle("fp-date-mode", isDate);
+
+  if (isDate) {
+    const active = taskColFilters[col];
+    _fpDateFrom  = active?.from ?? null;
+    _fpDateTo    = active?.to   ?? null;
+    _fpHoverDate = null;
+    const base   = _fpDateFrom ? new Date(_fpDateFrom + "T00:00:00") : new Date();
+    _fpCalYear   = base.getFullYear();
+    _fpCalMonth  = base.getMonth();
+    fpRenderCalDays();
+    fpUpdateRangeHint();
+  } else {
+    const allVals = [...new Set(tasks.map(r => String(r[col]??"")))].sort();
+    _fpState = {};
+    const active = taskColFilters[col];
+    allVals.forEach(v => _fpState[v] = active===null || active.has(v));
+    document.getElementById("fp-search").value = "";
+    fpRenderList();
+  }
+
+  const pw   = isDate ? 278 : 210;
+  const rect = e.currentTarget.getBoundingClientRect();
+  let left   = rect.left;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  popup.style.top  = (rect.bottom + 4) + "px";
+  popup.style.left = left + "px";
+  popup.classList.add("fp-open");
+}
+
+function fpClose() {
+  document.getElementById("filter-popup").classList.remove("fp-open");
+  _fpCol      = null;
+  _fpHoverDate= null;
+}
+
+function fpRenderList() {
+  const q       = document.getElementById("fp-search").value.toLowerCase();
+  const allVals = [...new Set(tasks.map(r => String(r[_fpCol]??"")))].sort();
+  const visible = allVals.filter(v => !q || v.toLowerCase().includes(q));
+  const list    = document.getElementById("fp-list");
+  list.innerHTML = visible.length === 0
+    ? `<div class="fp-empty">一致なし</div>`
+    : visible.map((v,i) => {
+        const id = "fp_item_" + i;
+        return `<div class="fp-item">
+          <input type="checkbox" id="${id}" data-val="${String(v).replace(/"/g,'&quot;')}"
+            ${_fpState[v]?'checked':''} onchange="fpItemToggle(this)">
+          <label for="${id}" title="${esc(v)}">${esc(v)}</label>
+        </div>`;
+      }).join('');
+  const cnt = visible.filter(v => _fpState[v]).length;
+  const cb  = document.getElementById("fp-all-cb");
+  cb.checked       = cnt === visible.length;
+  cb.indeterminate = cnt > 0 && cnt < visible.length;
+}
+
+function fpItemToggle(cb) {
+  _fpState[cb.dataset.val] = cb.checked;
+  const q = document.getElementById("fp-search").value.toLowerCase();
+  const visible = [...new Set(tasks.map(r => String(r[_fpCol]??"")))].sort()
+    .filter(x => !q || x.toLowerCase().includes(q));
+  const cnt = visible.filter(x => _fpState[x]).length;
+  const allCb = document.getElementById("fp-all-cb");
+  allCb.checked       = cnt === visible.length;
+  allCb.indeterminate = cnt > 0 && cnt < visible.length;
+}
+
+function fpToggleAll(checked) {
+  const q = document.getElementById("fp-search").value.toLowerCase();
+  [...new Set(tasks.map(r => String(r[_fpCol]??"")))].sort()
+    .filter(v => !q || v.toLowerCase().includes(q))
+    .forEach(v => _fpState[v] = checked);
+  fpRenderList();
+}
+
+function fpClear() {
+  const isDate = TASK_COLS.find(c => c.key === _fpCol)?.type === "date";
+  if (isDate) {
+    _fpDateFrom = null; _fpDateTo = null; _fpHoverDate = null;
+    fpRenderCalDays();
+    fpUpdateRangeHint();
+  } else {
+    [...new Set(tasks.map(r => String(r[_fpCol]??"")))].forEach(v => _fpState[v] = true);
+    fpRenderList();
+  }
+}
+
+function fpApply() {
+  const col    = _fpCol;
+  const isDate = TASK_COLS.find(c => c.key === col)?.type === "date";
+  if (isDate) {
+    taskColFilters[col] = (_fpDateFrom || _fpDateTo)
+      ? {from:_fpDateFrom, to:_fpDateTo} : null;
+  } else {
+    const allVals = [...new Set(tasks.map(r => String(r[col]??"")))];
+    const checked = allVals.filter(v => _fpState[v]);
+    taskColFilters[col] = checked.length === allVals.length ? null : new Set(checked);
+  }
+  fpClose();
+  fpUpdateHeaders();
+  renderTaskList();
+  drawGanttBody(new Date(viewDate.getFullYear(), viewDate.getMonth(), 1));
+}
+
+// ── カレンダー ─────────────────────────────────────────
+function fpFmtDate(d) {
+  return d.getFullYear() + "-"
+    + String(d.getMonth()+1).padStart(2,"0") + "-"
+    + String(d.getDate()).padStart(2,"0");
+}
+function fpCalNav(dir) {
+  _fpCalMonth += dir;
+  if (_fpCalMonth < 0)  { _fpCalMonth = 11; _fpCalYear--; }
+  if (_fpCalMonth > 11) { _fpCalMonth = 0;  _fpCalYear++; }
+  fpRenderCalDays();
+}
+function fpYearNav(dir) {
+  _fpCalYear += dir;
+  fpRenderCalDays();
+}
+function fpGoToday() {
+  _fpCalYear  = new Date().getFullYear();
+  _fpCalMonth = new Date().getMonth();
+  fpRenderCalDays();
+}
+function fpSelectWholeMonth() {
+  _fpDateFrom  = fpFmtDate(new Date(_fpCalYear, _fpCalMonth, 1));
+  _fpDateTo    = fpFmtDate(new Date(_fpCalYear, _fpCalMonth+1, 0));
+  _fpHoverDate = null;
+  fpRenderCalDays();
+  fpUpdateRangeHint();
+}
+function fpRenderYearStrip() {
+  const strip = document.getElementById("fp-cal-year-strip");
+  strip.innerHTML = Array.from({length:8}, (_,i) => _fpCalYear - 3 + i).map(y =>
+    `<button type="button" class="fp-ys-btn${y===_fpCalYear?' cur':''}" data-year="${y}">${y}</button>`
+  ).join('');
+  requestAnimationFrame(() => {
+    const cur = strip.querySelector('.fp-ys-btn.cur');
+    if (cur) cur.scrollIntoView({inline:'center',block:'nearest'});
+  });
+}
+function fpRenderCalDays() {
+  document.getElementById("fp-month-btn").textContent = `${_fpCalMonth+1}月`;
+  fpRenderYearStrip();
+  const todayStr  = fpFmtDate(new Date());
+  const from = _fpDateFrom, to = _fpDateTo, hov = _fpHoverDate;
+  const first    = new Date(_fpCalYear, _fpCalMonth, 1);
+  const startDow = first.getDay();
+  const totalDays= new Date(_fpCalYear, _fpCalMonth+1, 0).getDate();
+  const dayHtml  = (ds, dayNum, extra="") => {
+    const dow = new Date(ds+"T00:00:00").getDay();
+    let cls = "fp-mc-day" + extra;
+    if (dow===0) cls += " fp-sun";
+    if (dow===6) cls += " fp-sat";
+    if (ds===todayStr) cls += " fp-today";
+    cls += " " + fpComputeDayClass(ds, from, to, hov);
+    return `<div class="${cls.trim()}" data-ds="${ds}">${dayNum}</div>`;
+  };
+  let html = "";
+  for (let i=0; i<startDow; i++) {
+    const d = new Date(_fpCalYear, _fpCalMonth, i-startDow+1);
+    html += dayHtml(fpFmtDate(d), d.getDate(), " fp-other-month");
+  }
+  for (let d=1; d<=totalDays; d++) {
+    html += dayHtml(fpFmtDate(new Date(_fpCalYear, _fpCalMonth, d)), d);
+  }
+  const rem = 7 - ((startDow+totalDays)%7);
+  if (rem<7) for (let d=1; d<=rem; d++)
+    html += dayHtml(fpFmtDate(new Date(_fpCalYear, _fpCalMonth+1, d)), d, " fp-other-month");
+  document.getElementById("fp-mc-days").innerHTML = html;
+}
+function fpComputeDayClass(ds, from, to, hov) {
+  if (from && to) {
+    if (ds===from && ds===to) return "fp-range-start fp-range-end";
+    if (ds===from)            return "fp-range-start";
+    if (ds===to)              return "fp-range-end";
+    if (ds>from && ds<to)     return "fp-in-range";
+    return "";
+  }
+  if (from && !to && hov) {
+    const lo=from<hov?from:hov, hi=from<hov?hov:from;
+    if (ds===from) return from===hov?"fp-range-start fp-range-end":(from<hov?"fp-range-start":"fp-range-end");
+    if (ds===hov)  return from<hov?"fp-preview-end":"fp-range-start";
+    if (ds>lo && ds<hi) return "fp-preview-in-range";
+    return "";
+  }
+  if (from && !to && !hov) return ds===from?"fp-range-start fp-range-end":"";
+  return "";
+}
+function fpSelectCalDay(ds) {
+  if (!_fpDateFrom || (_fpDateFrom && _fpDateTo)) {
+    _fpDateFrom = ds; _fpDateTo = null;
+  } else {
+    if (ds >= _fpDateFrom) { _fpDateTo = ds; }
+    else { _fpDateTo = _fpDateFrom; _fpDateFrom = ds; }
+  }
+  _fpHoverDate = null;
+  fpRenderCalDays();
+  fpUpdateRangeHint();
+}
+function fpUpdateRangeHint() {
+  const el = document.getElementById("fp-range-hint");
+  el.className = "fp-range-hint";
+  if (!_fpDateFrom && !_fpDateTo) {
+    el.textContent = "開始日をクリック";
+  } else if (_fpDateFrom && !_fpDateTo) {
+    el.textContent = `${_fpDateFrom}　→　終了日をクリック`;
+    el.classList.add("fp-selecting");
+  } else {
+    el.textContent = `${_fpDateFrom}　〜　${_fpDateTo}`;
+    el.classList.add("fp-complete");
+  }
+}
+
+// ── イベントデリゲーション ─────────────────────────────
+document.getElementById("fp-cal-year-strip").addEventListener("click", e => {
+  e.stopPropagation();
+  const btn = e.target.closest("[data-year]");
+  if (btn) { _fpCalYear = Number(btn.dataset.year); fpRenderCalDays(); }
+});
+(function() {
+  const grid = document.getElementById("fp-mc-days");
+  grid.addEventListener("click", e => {
+    e.stopPropagation();
+    const day = e.target.closest("[data-ds]");
+    if (day) fpSelectCalDay(day.dataset.ds);
+  });
+  grid.addEventListener("mouseover", e => {
+    const day = e.target.closest("[data-ds]");
+    const ds  = day?.dataset.ds ?? null;
+    if (_fpDateFrom && !_fpDateTo && ds !== _fpHoverDate) {
+      _fpHoverDate = ds; fpRenderCalDays();
+    }
+  });
+  grid.addEventListener("mouseleave", () => {
+    if (_fpHoverDate !== null) { _fpHoverDate = null; fpRenderCalDays(); }
+  });
+})();
+
+// ── 外クリックでポップアップ閉じ ─────────────────────
+document.addEventListener("click", e => {
+  const popup = document.getElementById("filter-popup");
+  if (popup && popup.classList.contains("fp-open") && !popup.contains(e.target)) fpClose();
+});
+
+/* ═══════════════════════════════════════════════
+   Utilities
+═══════════════════════════════════════════════ */
+function parseDate(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function toast(msg){
+  const el=document.getElementById("toast");
+  el.textContent=msg;el.classList.add("show");
+  setTimeout(()=>el.classList.remove("show"),2500);
+}
+
+/* ═══════════════════════════════════════════════
+   Init
+═══════════════════════════════════════════════ */
+// ヘッダー横スクロール同期
+document.getElementById("gantt-body-outer").addEventListener("scroll", e=>{
+  document.getElementById("gantt-header-outer").scrollLeft=e.target.scrollLeft;
+});
+// 月ピッカー: 外クリックで閉じる
+document.addEventListener("click", e=>{
+  const popup   = document.getElementById("month-picker-popup");
+  const trigger = document.getElementById("month-picker-trigger");
+  if (popup && popup.classList.contains("open") &&
+      !popup.contains(e.target) && !trigger.contains(e.target)) {
+    closeMonthPicker();
+  }
+});
+
+updateMonthLabel();
+clearTaskForm(); clearToolForm(); clearAssigneeForm();
+
+Promise.all([loadTools(), loadAssignees()]).then(()=>{
+  refreshDataLists();
+  loadTasks();
+});
+
+window.addEventListener("resize", drawGantt);
+</script>
+</body>
+</html>
