@@ -376,6 +376,41 @@ th.col-filtered .filter-btn{color:#2471a3}
 }
 #toast.show{opacity:1}
 
+/* ── AI Tab ──────────────────────────────────────── */
+#tab-ai{flex-direction:column;overflow-y:auto;padding:12px 16px;gap:12px;background:#eef1f5}
+.ai-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px}
+.ai-card{background:#fff;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.1);padding:16px 18px}
+.ai-card-title{font-size:13px;font-weight:700;color:#2c3e50;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.ai-card-title .ai-icon{font-size:16px}
+.ai-textarea{width:100%;border:1px solid #d0d7de;border-radius:6px;padding:8px 10px;font-size:13px;
+             font-family:inherit;resize:vertical;min-height:70px;outline:none}
+.ai-textarea:focus{border-color:#3498db}
+.ai-btn{background:#3498db;color:#fff;border:none;border-radius:5px;padding:7px 16px;
+        font-size:12px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:8px}
+.ai-btn:hover{background:#2980b9}
+.ai-btn:disabled{background:#aaa;cursor:not-allowed}
+.ai-output{margin-top:10px;font-size:12px;color:#333;line-height:1.6;white-space:pre-wrap;
+           background:#f8f9fa;border-radius:5px;padding:10px;min-height:40px;display:none}
+.ai-output.show{display:block}
+.ai-loading{color:#3498db;font-size:12px;margin-top:8px;display:none}
+.ai-loading.show{display:block}
+.ai-risk-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:12px}
+.ai-risk-row:last-child{border-bottom:none}
+.ai-risk-name{font-weight:600;flex:1}
+.ai-risk-reason{color:#666;flex:2}
+.ai-risk-badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;flex-shrink:0}
+.risk-high{background:#fde8e8;color:#c0392b}.risk-mid{background:#fef9e7;color:#b7770d}.risk-low{background:#eafaf1;color:#1e8449}
+.ai-workload-bar{height:8px;border-radius:4px;background:#3498db;margin-top:3px;transition:width .4s}
+.ai-workload-row{margin-bottom:10px}
+.ai-workload-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px}
+.ai-parsed-field{display:flex;gap:8px;font-size:12px;padding:3px 0;border-bottom:1px solid #f0f0f0}
+.ai-parsed-field:last-child{border-bottom:none}
+.ai-parsed-key{color:#888;width:80px;flex-shrink:0;font-weight:600}
+.ai-parsed-val{color:#333;flex:1}
+.sentiment-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:middle}
+.sentiment-pos{background:#2ecc71}.sentiment-neu{background:#f39c12}.sentiment-neg{background:#e74c3c}
+.stress-tag{font-size:9px;padding:1px 5px;border-radius:10px;font-weight:700;margin-left:3px;vertical-align:middle}
+.stress-low{background:#eafaf1;color:#1e8449}.stress-mid{background:#fef9e7;color:#b7770d}.stress-high{background:#fde8e8;color:#c0392b}
 /* ── Lang switcher ──────────────────────────────── */
 .lang-switcher{position:relative}
 .lang-trigger{background:transparent;border:none;color:#8fa3b1;cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;transition:background .15s}
@@ -394,6 +429,7 @@ th.col-filtered .filter-btn{color:#2471a3}
   <button type="button" id="tab-btn-task"     class="tab-btn active" onclick="switchTab('task')"     data-i18n="tab_task">タスク</button>
   <button type="button" id="tab-btn-tool"     class="tab-btn"        onclick="switchTab('tool')"     data-i18n="tab_tool">ツール</button>
   <button type="button" id="tab-btn-assignee" class="tab-btn"        onclick="switchTab('assignee')" data-i18n="tab_assignee">担当者</button>
+  <button type="button" id="tab-btn-ai"       class="tab-btn"        onclick="switchTab('ai')">🤖 AI</button>
   <div style="margin-left:auto;display:flex;align-items:center;gap:10px;padding-right:4px">
     <div class="lang-switcher" id="lang-switcher">
       <button type="button" class="lang-trigger" onclick="toggleLangMenu()" id="lang-trigger">🌐</button>
@@ -542,6 +578,7 @@ th.col-filtered .filter-btn{color:#2471a3}
           <button type="button" class="btn btn-update" id="btn-update" onclick="updateTask()" disabled data-i18n="btn_update">更新</button>
           <button type="button" class="btn btn-delete" id="btn-delete" onclick="deleteTask()" disabled data-i18n="btn_delete">削除</button>
           <button type="button" class="btn btn-clear"                  onclick="clearTaskForm()" data-i18n="btn_clear">クリア</button>
+          <button type="button" class="btn" style="background:#8e44ad;color:#fff" onclick="aiDecomposeFromEditor()" title="AIでサブタスクに分解">🤖 分解</button>
         </div>
       </div>
     </section>
@@ -642,6 +679,73 @@ th.col-filtered .filter-btn{color:#2471a3}
     </div>
   </section>
 </div>
+
+<!-- ══════════ AI TAB ══════════ -->
+<div id="tab-ai" class="tab-pane">
+
+  <!-- 5. 自然言語タスク登録 -->
+  <div class="ai-card" style="max-width:760px">
+    <div class="ai-card-title"><span class="ai-icon">💬</span>自然言語でタスクを登録</div>
+    <textarea class="ai-textarea" id="ai-nl-input" placeholder="例：来週金曜までに田中さんにReactのコンポーネント実装をお願いしたい"></textarea>
+    <button type="button" class="ai-btn" onclick="aiParseTask()">🤖 解析してタスク編集欄に反映</button>
+    <div class="ai-loading" id="ai-nl-loading">AIが解析中…</div>
+    <div class="ai-output" id="ai-nl-output"></div>
+  </div>
+
+  <div class="ai-grid">
+
+    <!-- 2. 進捗レポート -->
+    <div class="ai-card">
+      <div class="ai-card-title"><span class="ai-icon">📊</span>進捗レポート自動生成</div>
+      <p style="font-size:12px;color:#666;margin-bottom:8px">現在のタスク一覧からAIが今週の進捗サマリーを作成します。</p>
+      <button type="button" class="ai-btn" onclick="aiGenerateReport()">📝 レポートを生成</button>
+      <div class="ai-loading" id="ai-report-loading">AIが生成中…</div>
+      <div class="ai-output" id="ai-report-output"></div>
+    </div>
+
+    <!-- 1. タスク分解（モーダル結果表示） -->
+    <div class="ai-card">
+      <div class="ai-card-title"><span class="ai-icon">🔀</span>タスク自動分解</div>
+      <p style="font-size:12px;color:#666;margin-bottom:8px">タスク編集欄でタスク名を入力し「🤖 分解」ボタンを押すとサブタスクが表示されます。</p>
+      <div class="ai-loading" id="ai-decomp-loading" style="display:none">AIが分解中…</div>
+      <div class="ai-output" id="ai-decomp-output"></div>
+    </div>
+
+    <!-- 3. 優先度アドバイス -->
+    <div class="ai-card">
+      <div class="ai-card-title"><span class="ai-icon">⚠️</span>優先度アドバイス</div>
+      <button type="button" class="ai-btn" onclick="aiPriorityAdvice()">🔍 リスクタスクを分析</button>
+      <div class="ai-loading" id="ai-priority-loading">AIが分析中…</div>
+      <div class="ai-output" id="ai-priority-output"></div>
+    </div>
+
+    <!-- 6. 遅延予測 -->
+    <div class="ai-card">
+      <div class="ai-card-title"><span class="ai-icon">📅</span>遅延予測</div>
+      <button type="button" class="ai-btn" onclick="aiDelayPrediction()">🔮 遅延リスクを予測</button>
+      <div class="ai-loading" id="ai-delay-loading">AIが予測中…</div>
+      <div class="ai-output" id="ai-delay-output"></div>
+    </div>
+
+    <!-- 4. 担当者負荷 -->
+    <div class="ai-card">
+      <div class="ai-card-title"><span class="ai-icon">👥</span>担当者負荷分析</div>
+      <button type="button" class="ai-btn" onclick="aiWorkload()">📈 負荷を分析</button>
+      <div class="ai-loading" id="ai-workload-loading">AIが分析中…</div>
+      <div class="ai-output" id="ai-workload-output"></div>
+    </div>
+
+    <!-- 7. 感情分析 -->
+    <div class="ai-card">
+      <div class="ai-card-title"><span class="ai-icon">🎭</span>タスク感情分析</div>
+      <p style="font-size:12px;color:#666;margin-bottom:8px">タスクのメモ・説明文からストレス度を分析します。タスク一覧にバッジが付きます。</p>
+      <button type="button" class="ai-btn" onclick="aiSentiment()">😊 感情を分析</button>
+      <div class="ai-loading" id="ai-sentiment-loading">AIが分析中…</div>
+      <div class="ai-output" id="ai-sentiment-output"></div>
+    </div>
+
+  </div>
+</div><!-- /tab-ai -->
 
 </div><!-- /main-area -->
 <!-- ══════════ FILTER POPUP ══════════ -->
@@ -1177,11 +1281,13 @@ function renderTaskList() {
     const toolHtml=t.tool
       ?`<span class="tool-tag" onclick="goToTool(${JSON.stringify(t.tool)},event)">${esc(t.tool)}</span>`
       :`<span style="color:#bbb">-</span>`;
+    const sent=_sentimentMap[t.id];
+    const sentBadge=sent?`<span class="sentiment-dot ${sent.sentiment==='ポジティブ'?'sentiment-pos':sent.sentiment==='ネガティブ'?'sentiment-neg':'sentiment-neu'}" title="${esc(sent.sentiment)}・ストレス${esc(sent.stress)}"></span><span class="stress-tag ${sent.stress==='高'?'stress-high':sent.stress==='低'?'stress-low':'stress-mid'}">${esc(sent.stress)}</span>`:'';
     tr.innerHTML=`
       <td style="color:#888;font-size:12px">${t.id}</td>
       <td>${esc(t.assignee||"-")}</td>
       <td>${toolHtml}</td>
-      <td title="${esc(t.name)}">${esc(t.name)}</td>
+      <td title="${esc(t.name)}">${esc(t.name)} ${sentBadge}</td>
       <td style="color:#777">${t.implementation_date||"-"}</td>
       <td style="color:#777">${t.request_date||"-"}</td>
       <td>${t.start_date}</td>
@@ -2052,6 +2158,199 @@ Promise.all([loadTools(),loadAssignees()]).then(()=>{
   loadTasks();
   applyLang();
 });
+
+/* ═══════════════════════════════════════════════
+   AI Features
+═══════════════════════════════════════════════ */
+let _sentimentMap = {}; // id -> {sentiment, stress}
+
+function _aiLoading(id, on){
+  const el=document.getElementById(id);
+  if(el){el.style.display=on?'block':'none';}
+}
+function _aiShow(id, html){
+  const el=document.getElementById(id);
+  if(el){el.classList.add('show');el.innerHTML=html;}
+}
+function _aiHide(id){
+  const el=document.getElementById(id);
+  if(el){el.classList.remove('show');el.innerHTML='';}
+}
+
+// 1. タスク分解（エディタから）
+async function aiDecomposeFromEditor(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){toast('タスク名を入力してください');return;}
+  switchTab('ai');
+  _aiHide('ai-decomp-output');
+  _aiLoading('ai-decomp-loading',true);
+  try{
+    const r=await fetch('/api/ai/decompose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const d=await r.json();
+    _aiLoading('ai-decomp-loading',false);
+    if(d.subtasks&&d.subtasks.length){
+      const items=d.subtasks.map((s,i)=>`<div style="padding:4px 0;font-size:12px;border-bottom:1px solid #f0f0f0">${i+1}. ${esc(s)}</div>`).join('');
+      _aiShow('ai-decomp-output',`<div style="font-weight:700;margin-bottom:6px;font-size:12px">「${esc(name)}」のサブタスク:</div>${items}`);
+    } else {
+      _aiShow('ai-decomp-output','サブタスクを取得できませんでした。');
+    }
+  }catch(e){_aiLoading('ai-decomp-loading',false);_aiShow('ai-decomp-output','エラーが発生しました。');}
+}
+
+// 2. 進捗レポート
+async function aiGenerateReport(){
+  _aiHide('ai-report-output');
+  _aiLoading('ai-report-loading',true);
+  const btn=document.querySelector('[onclick="aiGenerateReport()"]');
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/ai/report');
+    const d=await r.json();
+    _aiLoading('ai-report-loading',false);
+    _aiShow('ai-report-output', d.report||'レポートを生成できませんでした。');
+  }catch(e){_aiLoading('ai-report-loading',false);_aiShow('ai-report-output','エラーが発生しました。');}
+  if(btn)btn.disabled=false;
+}
+
+// 3. 優先度アドバイス
+async function aiPriorityAdvice(){
+  _aiHide('ai-priority-output');
+  _aiLoading('ai-priority-loading',true);
+  const btn=document.querySelector('[onclick="aiPriorityAdvice()"]');
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/ai/priority-advice');
+    const d=await r.json();
+    _aiLoading('ai-priority-loading',false);
+    if(d.advice&&d.advice.length){
+      const rows=d.advice.map(a=>`
+        <div class="ai-risk-row">
+          <div class="ai-risk-name">${esc(a.name||'')}</div>
+          <div class="ai-risk-reason">${esc(a.reason||'')}</div>
+        </div>`).join('');
+      _aiShow('ai-priority-output',rows);
+    } else {
+      _aiShow('ai-priority-output','現在、高リスクなタスクはありません。');
+    }
+  }catch(e){_aiLoading('ai-priority-loading',false);_aiShow('ai-priority-output','エラーが発生しました。');}
+  if(btn)btn.disabled=false;
+}
+
+// 4. 担当者負荷
+async function aiWorkload(){
+  _aiHide('ai-workload-output');
+  _aiLoading('ai-workload-loading',true);
+  const btn=document.querySelector('[onclick="aiWorkload()"]');
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/ai/workload');
+    const d=await r.json();
+    _aiLoading('ai-workload-loading',false);
+    const maxCount=d.workload.length?Math.max(...d.workload.map(w=>w.count)):1;
+    const bars=d.workload.map(w=>{
+      const pct=Math.round(w.count/maxCount*100);
+      const advice=d.advice.find(a=>a.name===w.name);
+      const levelHtml=advice?`<span class="ai-risk-badge risk-${advice.level==='高'?'high':advice.level==='中'?'mid':'low'}">${advice.level}</span>`:'';
+      return `<div class="ai-workload-row">
+        <div class="ai-workload-label"><span>${esc(w.name)} ${levelHtml}</span><span>${w.count}件</span></div>
+        <div style="background:#eee;border-radius:4px;height:8px"><div class="ai-workload-bar" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+    _aiShow('ai-workload-output', bars||'タスクデータがありません。');
+  }catch(e){_aiLoading('ai-workload-loading',false);_aiShow('ai-workload-output','エラーが発生しました。');}
+  if(btn)btn.disabled=false;
+}
+
+// 5. 自然言語タスク解析
+async function aiParseTask(){
+  const text=document.getElementById('ai-nl-input').value.trim();
+  if(!text){toast('文章を入力してください');return;}
+  _aiHide('ai-nl-output');
+  _aiLoading('ai-nl-loading',true);
+  const btn=document.querySelector('[onclick="aiParseTask()"]');
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/ai/parse-task',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const d=await r.json();
+    _aiLoading('ai-nl-loading',false);
+    const t=d.task||{};
+    if(t.name){
+      // タスク欄に反映
+      switchTab('task');
+      document.getElementById('f-name').value=t.name||'';
+      document.getElementById('f-end').value=t.end_date||'';
+      document.getElementById('f-desc').value=t.description||'';
+      // 担当者をセット
+      const asgn=document.getElementById('f-assignee');
+      if(asgn&&t.assignee){
+        for(const opt of asgn.options){if(opt.text===t.assignee){asgn.value=opt.value;break;}}
+      }
+      toast('タスク編集欄に反映しました');
+    } else {
+      const fields=Object.entries(t).map(([k,v])=>`<div class="ai-parsed-field"><div class="ai-parsed-key">${esc(k)}</div><div class="ai-parsed-val">${esc(String(v))}</div></div>`).join('');
+      _aiShow('ai-nl-output', fields||'解析できませんでした。');
+    }
+  }catch(e){_aiLoading('ai-nl-loading',false);_aiShow('ai-nl-output','エラーが発生しました。');}
+  if(btn)btn.disabled=false;
+}
+
+// 6. 遅延予測
+async function aiDelayPrediction(){
+  _aiHide('ai-delay-output');
+  _aiLoading('ai-delay-loading',true);
+  const btn=document.querySelector('[onclick="aiDelayPrediction()"]');
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/ai/delay-prediction');
+    const d=await r.json();
+    _aiLoading('ai-delay-loading',false);
+    if(d.predictions&&d.predictions.length){
+      const rows=d.predictions.map(p=>{
+        const riskClass=p.risk==='高'?'high':p.risk==='中'?'mid':'low';
+        return `<div class="ai-risk-row">
+          <div class="ai-risk-name">${esc(p.name||'')}</div>
+          <div class="ai-risk-reason">${esc(p.reason||'')}${p.delay_days?` (約${p.delay_days}日遅延)`:''}</div>
+          <span class="ai-risk-badge risk-${riskClass}">${p.risk||''}</span>
+        </div>`;
+      }).join('');
+      _aiShow('ai-delay-output',rows);
+    } else {
+      _aiShow('ai-delay-output','遅延リスクのあるタスクは検出されませんでした。');
+    }
+  }catch(e){_aiLoading('ai-delay-loading',false);_aiShow('ai-delay-output','エラーが発生しました。');}
+  if(btn)btn.disabled=false;
+}
+
+// 7. 感情分析
+async function aiSentiment(){
+  _aiHide('ai-sentiment-output');
+  _aiLoading('ai-sentiment-loading',true);
+  const btn=document.querySelector('[onclick="aiSentiment()"]');
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/ai/sentiment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tasks})});
+    const d=await r.json();
+    _aiLoading('ai-sentiment-loading',false);
+    _sentimentMap={};
+    if(d.sentiments&&d.sentiments.length){
+      d.sentiments.forEach(s=>{ _sentimentMap[s.id]=s; });
+      renderTaskList(); // バッジを更新
+      const rows=d.sentiments.map(s=>{
+        const dotClass=s.sentiment==='ポジティブ'?'sentiment-pos':s.sentiment==='ネガティブ'?'sentiment-neg':'sentiment-neu';
+        const stressClass=s.stress==='高'?'stress-high':s.stress==='低'?'stress-low':'stress-mid';
+        const t=tasks.find(x=>x.id===s.id);
+        return `<div class="ai-risk-row">
+          <div class="ai-risk-name"><span class="sentiment-dot ${dotClass}"></span>${esc(t?t.name:'ID:'+s.id)}</div>
+          <span class="stress-tag ${stressClass}">ストレス${s.stress}</span>
+        </div>`;
+      }).join('');
+      _aiShow('ai-sentiment-output',rows);
+    } else {
+      _aiShow('ai-sentiment-output','分析結果がありません。');
+    }
+  }catch(e){_aiLoading('ai-sentiment-loading',false);_aiShow('ai-sentiment-output','エラーが発生しました。');}
+  if(btn)btn.disabled=false;
+}
 </script>
 </body>
 </html>

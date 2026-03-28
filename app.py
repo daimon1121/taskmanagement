@@ -605,6 +605,150 @@ def admin_dashboard():
     }
     return render_template("admin_dashboard.html", users=users, stats=stats)
 
+# ─── AI Routes ───────────────────────────────────────────────────────────────
+import anthropic as _anthropic
+import re as _re
+import json as _json
+from collections import Counter as _Counter
+
+def _ai_call(prompt, max_tokens=1024):
+    client = _anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return msg.content[0].text
+
+def _extract_json_array(text):
+    match = _re.search(r'\[.*\]', text, _re.DOTALL)
+    if not match:
+        return []
+    try:
+        return _json.loads(match.group())
+    except Exception:
+        return []
+
+def _extract_json_obj(text):
+    match = _re.search(r'\{.*\}', text, _re.DOTALL)
+    if not match:
+        return {}
+    try:
+        return _json.loads(match.group())
+    except Exception:
+        return {}
+
+# 1. タスク自動分解
+@app.route("/api/ai/decompose", methods=["POST"])
+@login_required
+def ai_decompose():
+    name = (request.json or {}).get("name", "").strip()
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    text = _ai_call(
+        f"タスク「{name}」を5〜7個の具体的なサブタスクに分解してください。"
+        f"JSON配列のみ返してください（説明不要）: [\"サブタスク1\", \"サブタスク2\", ...]"
+    )
+    return jsonify({"subtasks": _extract_json_array(text)})
+
+# 2. 進捗レポート自動生成
+@app.route("/api/ai/report", methods=["GET"])
+@login_required
+def ai_report():
+    data = load_data()
+    summary = "\n".join([
+        f"- {t['name']} | ステータス:{t.get('status','')} | 優先度:{t.get('priority','')} | 完了日:{t.get('end_date','')}"
+        for t in data["tasks"]
+    ])
+    text = _ai_call(
+        f"以下のタスク一覧から今週の進捗レポートを300字程度で作成してください:\n{summary}",
+        max_tokens=600
+    )
+    return jsonify({"report": text})
+
+# 3. 優先度アドバイス
+@app.route("/api/ai/priority-advice", methods=["GET"])
+@login_required
+def ai_priority_advice():
+    data = load_data()
+    today = datetime.now().strftime("%Y-%m-%d")
+    tasks = [t for t in data["tasks"] if t.get("status") != "完了"]
+    summary = "\n".join([
+        f"- ID:{t['id']} タスク名:{t['name']} 完了日:{t.get('end_date','')} ステータス:{t.get('status','')}"
+        for t in tasks
+    ])
+    text = _ai_call(
+        f"今日は{today}です。以下の未完了タスクから遅延リスクが高いものを3件以内で指摘してください。"
+        f"JSON配列のみ返してください: [{{\"id\":1,\"name\":\"タスク名\",\"reason\":\"理由\"}}]\n{summary}"
+    )
+    return jsonify({"advice": _extract_json_array(text)})
+
+# 4. 担当者負荷検知
+@app.route("/api/ai/workload", methods=["GET"])
+@login_required
+def ai_workload():
+    data = load_data()
+    tasks = [t for t in data["tasks"] if t.get("status") != "完了"]
+    counts = _Counter(t.get("assignee", "不明") for t in tasks)
+    workload = [{"name": k, "count": v} for k, v in counts.most_common()]
+    summary = "\n".join([f"- {w['name']}: {w['count']}件" for w in workload])
+    text = _ai_call(
+        f"以下の担当者別タスク件数から負荷が偏っている担当者を指摘してください。"
+        f"JSON配列のみ返してください: [{{\"name\":\"担当者名\",\"count\":5,\"level\":\"高\",\"comment\":\"コメント\"}}]\n{summary}"
+    )
+    return jsonify({"workload": workload, "advice": _extract_json_array(text)})
+
+# 5. 自然言語タスク登録
+@app.route("/api/ai/parse-task", methods=["POST"])
+@login_required
+def ai_parse_task():
+    text_input = (request.json or {}).get("text", "").strip()
+    if not text_input:
+        return jsonify({"error": "text required"}), 400
+    today = datetime.now().strftime("%Y-%m-%d")
+    result = _ai_call(
+        f"今日は{today}です。次の文章からタスク情報を抽出してJSON形式で返してください。"
+        f"フィールド: name(タスク名), assignee(担当者名), end_date(完了日 YYYY-MM-DD形式), priority(高/中/低), description(メモ)\n"
+        f"文章: 「{text_input}」\n"
+        f"JSONオブジェクトのみ返してください: {{\"name\":\"...\",\"assignee\":\"...\",\"end_date\":\"...\",\"priority\":\"...\",\"description\":\"...\"}}"
+    )
+    return jsonify({"task": _extract_json_obj(result)})
+
+# 6. 遅延予測
+@app.route("/api/ai/delay-prediction", methods=["GET"])
+@login_required
+def ai_delay_prediction():
+    data = load_data()
+    today = datetime.now().strftime("%Y-%m-%d")
+    tasks = [t for t in data["tasks"] if t.get("status") not in ("完了",)]
+    summary = "\n".join([
+        f"- ID:{t['id']} {t['name']} 着手日:{t.get('start_date','')} 完了予定:{t.get('end_date','')} ステータス:{t.get('status','')}"
+        for t in tasks
+    ])
+    text = _ai_call(
+        f"今日は{today}です。以下のタスクの進捗から遅延が予想されるものを分析してください。"
+        f"JSON配列のみ返してください: [{{\"id\":1,\"name\":\"タスク名\",\"delay_days\":3,\"risk\":\"高\",\"reason\":\"理由\"}}]\n{summary}"
+    )
+    return jsonify({"predictions": _extract_json_array(text)})
+
+# 7. 感情分析
+@app.route("/api/ai/sentiment", methods=["POST"])
+@login_required
+def ai_sentiment():
+    tasks = (request.json or {}).get("tasks", [])
+    if not tasks:
+        return jsonify({"sentiments": []})
+    descriptions = "\n".join([
+        f"ID:{t['id']} 「{t.get('description', t.get('name',''))}」"
+        for t in tasks[:20]
+    ])
+    text = _ai_call(
+        f"以下のタスクの内容から感情・ストレス度を分析してください。"
+        f"JSON配列のみ返してください: [{{\"id\":1,\"sentiment\":\"ポジティブ\",\"stress\":\"低\"}}]\n"
+        f"sentimentは「ポジティブ/普通/ネガティブ」、stressは「低/中/高」\n{descriptions}"
+    )
+    return jsonify({"sentiments": _extract_json_array(text)})
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)

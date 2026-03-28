@@ -4,3 +4,4 @@ stripe
 werkzeug
 itsdangerous
 psycopg2-binary
+anthropic
