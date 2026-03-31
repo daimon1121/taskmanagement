@@ -536,6 +536,10 @@ def delete_assignee(aid):
     return jsonify({"ok": True})
 
 # ─── API: Tasks ───────────────────────────────────────────────────────────────
+@app.route("/tokusho")
+def tokusho():
+    return render_template("tokusho.html")
+
 @app.route("/")
 @login_required
 def index():

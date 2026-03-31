@@ -202,6 +202,62 @@ input:focus,select:focus,textarea:focus{border-color:#007acc}
 }
 .dp-clear-btn:hover{background:#3c3c3c;color:#d4d4d4}
 .dp-label-empty{color:#858585}
+/* ── Date Picker Floating Popup ──────────────────── */
+#dp-modal{
+  position:fixed;width:800px;height:600px;min-width:400px;min-height:300px;
+  background:#252526;border:1px solid #454545;border-radius:8px;
+  z-index:2000;box-shadow:0 12px 48px rgba(0,0,0,.85);
+  display:none;flex-direction:column;resize:both;overflow:hidden;
+}
+#dp-modal.open{display:flex}
+#dp-modal-hdr{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:#2d2d2d;border-bottom:1px solid #454545;
+  cursor:move;flex-shrink:0;-webkit-user-select:none;user-select:none;
+}
+#dp-modal-title{flex:1;font-size:13px;font-weight:700;color:#ccc}
+#dp-modal-body{flex:1;min-height:0;display:flex;flex-direction:column;padding:10px;gap:6px}
+/* ── Custom Select Popup ──────────────────────────── */
+.sel-wrap{position:relative}
+.sel-btn{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;
+  background:#3c3c3c;border:1px solid #454545;border-radius:5px;
+  color:#d4d4d4;font-size:12px;font-weight:600;padding:5px 8px;
+  cursor:pointer;text-align:left;transition:border-color .15s;
+}
+.sel-btn:hover,.sel-btn.open{border-color:#007acc}
+.sel-btn span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sel-btn .sel-arrow{color:#858585;flex-shrink:0;font-size:9px}
+#sel-popup{
+  position:fixed;width:800px;height:600px;min-width:400px;min-height:300px;
+  background:#252526;border:1px solid #454545;border-radius:8px;
+  z-index:2001;box-shadow:0 12px 48px rgba(0,0,0,.85);
+  display:none;flex-direction:column;resize:both;overflow:hidden;
+}
+#sel-popup.open{display:flex}
+#sel-popup-hdr{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:#2d2d2d;border-bottom:1px solid #454545;
+  cursor:move;flex-shrink:0;-webkit-user-select:none;user-select:none;
+}
+#sel-popup-title{flex:1;font-size:13px;font-weight:700;color:#ccc}
+#sel-popup-body{flex:1;min-height:0;display:flex;flex-direction:column;padding:10px;gap:0}
+#sel-search{
+  width:100%;background:#1e1e1e;border:1px solid #454545;border-radius:4px;
+  color:#d4d4d4;font-size:12px;padding:5px 8px;margin-bottom:8px;outline:none;flex-shrink:0;
+}
+#sel-search:focus{border-color:#007acc}
+#sel-search::placeholder{color:#858585}
+#sel-list{overflow-y:auto;flex:1;border:1px solid #3c3c3c;border-radius:4px}
+#sel-list::-webkit-scrollbar{width:5px}
+#sel-list::-webkit-scrollbar-thumb{background:#505050;border-radius:3px}
+.sel-item{
+  padding:7px 12px;font-size:12px;color:#d4d4d4;cursor:pointer;
+  transition:background .08s;border-bottom:1px solid #272727;
+}
+.sel-item:hover{background:#2a2d2e}
+.sel-item.sel-selected{background:#094771;color:#569cd6;font-weight:700}
+.sel-item.sel-none{color:#858585}
 select option{background:#3c3c3c;color:#d4d4d4}
 textarea{resize:none}
 .editor-row-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
@@ -672,11 +728,23 @@ th.col-filtered .fp-funnel{fill:#007acc}
         <div class="editor-row-2col">
           <div>
             <div class="field-label" data-i18n="f_assignee">担当者</div>
-            <select id="f-assignee" title="担当者"></select>
+            <div class="sel-wrap">
+              <button type="button" class="sel-btn" id="f-assignee-btn" onclick="openSelPopup('f-assignee',this)" data-value="">
+                <span id="f-assignee-label">-- なし --</span>
+                <span class="sel-arrow">▼</span>
+              </button>
+              <input type="hidden" id="f-assignee">
+            </div>
           </div>
           <div>
             <div class="field-label">Tool</div>
-            <select id="f-tool" title="Tool"></select>
+            <div class="sel-wrap">
+              <button type="button" class="sel-btn" id="f-tool-btn" onclick="openSelPopup('f-tool',this)" data-value="">
+                <span id="f-tool-label">-- なし --</span>
+                <span class="sel-arrow">▼</span>
+              </button>
+              <input type="hidden" id="f-tool">
+            </div>
           </div>
         </div>
 
@@ -694,16 +762,6 @@ th.col-filtered .fp-funnel{fill:#007acc}
                 </button>
               </div>
               <input type="hidden" id="f-request">
-              <div class="dp-popup" id="f-request-dp-popup">
-                <div class="dp-popup-hdr">
-                  <button type="button" class="dp-nav-btn" onclick="dpNav('f-request',-1)">‹</button>
-                  <span class="dp-popup-title"></span>
-                  <button type="button" class="dp-nav-btn" onclick="dpNav('f-request',1)">›</button>
-                </div>
-                <div class="dp-wdays"><div class="dp-wday">日</div><div class="dp-wday">月</div><div class="dp-wday">火</div><div class="dp-wday">水</div><div class="dp-wday">木</div><div class="dp-wday">金</div><div class="dp-wday">土</div></div>
-                <div class="dp-days"></div>
-                <button type="button" class="dp-clear-btn" onclick="setDP('f-request','');closeDP('f-request')">クリア</button>
-              </div>
             </div>
           </div>
           <div>
@@ -716,16 +774,6 @@ th.col-filtered .fp-funnel{fill:#007acc}
                 </button>
               </div>
               <input type="hidden" id="f-start">
-              <div class="dp-popup" id="f-start-dp-popup">
-                <div class="dp-popup-hdr">
-                  <button type="button" class="dp-nav-btn" onclick="dpNav('f-start',-1)">‹</button>
-                  <span class="dp-popup-title"></span>
-                  <button type="button" class="dp-nav-btn" onclick="dpNav('f-start',1)">›</button>
-                </div>
-                <div class="dp-wdays"><div class="dp-wday">日</div><div class="dp-wday">月</div><div class="dp-wday">火</div><div class="dp-wday">水</div><div class="dp-wday">木</div><div class="dp-wday">金</div><div class="dp-wday">土</div></div>
-                <div class="dp-days"></div>
-                <button type="button" class="dp-clear-btn" onclick="setDP('f-start','');closeDP('f-start')">クリア</button>
-              </div>
             </div>
           </div>
         </div>
@@ -740,16 +788,6 @@ th.col-filtered .fp-funnel{fill:#007acc}
                 </button>
               </div>
               <input type="hidden" id="f-dist">
-              <div class="dp-popup" id="f-dist-dp-popup">
-                <div class="dp-popup-hdr">
-                  <button type="button" class="dp-nav-btn" onclick="dpNav('f-dist',-1)">‹</button>
-                  <span class="dp-popup-title"></span>
-                  <button type="button" class="dp-nav-btn" onclick="dpNav('f-dist',1)">›</button>
-                </div>
-                <div class="dp-wdays"><div class="dp-wday">日</div><div class="dp-wday">月</div><div class="dp-wday">火</div><div class="dp-wday">水</div><div class="dp-wday">木</div><div class="dp-wday">金</div><div class="dp-wday">土</div></div>
-                <div class="dp-days"></div>
-                <button type="button" class="dp-clear-btn" onclick="setDP('f-dist','');closeDP('f-dist')">クリア</button>
-              </div>
             </div>
           </div>
           <div>
@@ -762,16 +800,6 @@ th.col-filtered .fp-funnel{fill:#007acc}
                 </button>
               </div>
               <input type="hidden" id="f-end">
-              <div class="dp-popup" id="f-end-dp-popup">
-                <div class="dp-popup-hdr">
-                  <button type="button" class="dp-nav-btn" onclick="dpNav('f-end',-1)">‹</button>
-                  <span class="dp-popup-title"></span>
-                  <button type="button" class="dp-nav-btn" onclick="dpNav('f-end',1)">›</button>
-                </div>
-                <div class="dp-wdays"><div class="dp-wday">日</div><div class="dp-wday">月</div><div class="dp-wday">火</div><div class="dp-wday">水</div><div class="dp-wday">木</div><div class="dp-wday">金</div><div class="dp-wday">土</div></div>
-                <div class="dp-days"></div>
-                <button type="button" class="dp-clear-btn" onclick="setDP('f-end','');closeDP('f-end')">クリア</button>
-              </div>
             </div>
           </div>
         </div>
@@ -787,16 +815,6 @@ th.col-filtered .fp-funnel{fill:#007acc}
                 </button>
               </div>
               <input type="hidden" id="f-impl-date">
-              <div class="dp-popup" id="f-impl-date-dp-popup">
-                <div class="dp-popup-hdr">
-                  <button type="button" class="dp-nav-btn" onclick="dpNav('f-impl-date',-1)">‹</button>
-                  <span class="dp-popup-title"></span>
-                  <button type="button" class="dp-nav-btn" onclick="dpNav('f-impl-date',1)">›</button>
-                </div>
-                <div class="dp-wdays"><div class="dp-wday">日</div><div class="dp-wday">月</div><div class="dp-wday">火</div><div class="dp-wday">水</div><div class="dp-wday">木</div><div class="dp-wday">金</div><div class="dp-wday">土</div></div>
-                <div class="dp-days"></div>
-                <button type="button" class="dp-clear-btn" onclick="setDP('f-impl-date','');closeDP('f-impl-date')">クリア</button>
-              </div>
             </div>
           </div>
           <div></div>
@@ -992,6 +1010,55 @@ th.col-filtered .fp-funnel{fill:#007acc}
   <div id="dbg-footer"><span id="dbg-count">0 件</span></div>
 </div>
 
+<!-- ══════════ DATE PICKER FLOATING ══════════ -->
+<div id="dp-modal">
+  <div id="dp-modal-hdr">
+    <span id="dp-modal-title"></span>
+    <button type="button" class="fp-close-btn" onclick="closeDPModal()">✕</button>
+  </div>
+  <div id="dp-modal-body">
+    <div class="fp-today-row">
+      <button type="button" class="fp-today-btn" onclick="dpModalToday()">今日</button>
+    </div>
+    <div class="fp-date-body">
+      <div class="fp-cal-year-col">
+        <button type="button" class="fp-mc-nav" onclick="dpModalYearNav(-1)">▲</button>
+        <div class="fp-cal-year-list" id="dp-modal-year-strip"></div>
+        <button type="button" class="fp-mc-nav" onclick="dpModalYearNav(1)">▼</button>
+      </div>
+      <div class="fp-cal-body">
+        <div class="fp-mc-hdr">
+          <button type="button" class="fp-mc-nav" onclick="dpModalCalNav(-1)">◀</button>
+          <button type="button" class="fp-month-btn" id="dp-modal-month-btn"></button>
+          <button type="button" class="fp-mc-nav" onclick="dpModalCalNav(1)">▶</button>
+        </div>
+        <div class="fp-mc-week">
+          <div class="fp-mc-wday" data-wday="0">日</div><div class="fp-mc-wday" data-wday="1">月</div><div class="fp-mc-wday" data-wday="2">火</div>
+          <div class="fp-mc-wday" data-wday="3">水</div><div class="fp-mc-wday" data-wday="4">木</div><div class="fp-mc-wday" data-wday="5">金</div>
+          <div class="fp-mc-wday" data-wday="6">土</div>
+        </div>
+        <div class="fp-mc-days" id="dp-modal-days"></div>
+      </div>
+    </div>
+  </div>
+  <div class="fp-btns" style="padding:0 10px 10px">
+    <button type="button" class="fp-btn fp-clear" onclick="dpModalClear()">クリア</button>
+    <button type="button" class="fp-btn fp-cancel" onclick="closeDPModal()">キャンセル</button>
+  </div>
+</div>
+
+<!-- ══════════ SEL POPUP ══════════ -->
+<div id="sel-popup">
+  <div id="sel-popup-hdr">
+    <span id="sel-popup-title">選択</span>
+    <button type="button" class="fp-close-btn" onclick="closeSelPopup()">✕</button>
+  </div>
+  <div id="sel-popup-body">
+    <input type="text" id="sel-search" placeholder="🔍 検索…" oninput="selRenderList()">
+    <div id="sel-list"></div>
+  </div>
+</div>
+
 <!-- ══════════ FILTER POPUP ══════════ -->
 <div class="filter-popup" id="filter-popup">
   <div id="fp-header">
@@ -1167,8 +1234,10 @@ function makeDraggable(hdrId, winId, skipClass) {
     });
   });
 }
-makeDraggable("dbg-hdr",  "dbg-win",      "dbg-hdr-btn");
-makeDraggable("fp-header", "filter-popup", "fp-close-btn");
+makeDraggable("dbg-hdr",      "dbg-win",      "dbg-hdr-btn");
+makeDraggable("fp-header",    "filter-popup", "fp-close-btn");
+makeDraggable("dp-modal-hdr", "dp-modal",     "fp-close-btn");
+makeDraggable("sel-popup-hdr","sel-popup",    "fp-close-btn");
 
 /* ═══════════════════════════════════════════════
    API helper
@@ -1191,16 +1260,11 @@ async function api(url, opts={}) {
    DataList refresh
 ═══════════════════════════════════════════════ */
 function refreshDataLists() {
-  const toolSel  = document.getElementById("f-tool");
-  const asgnSel  = document.getElementById("f-assignee");
-  const curTool  = toolSel.value;
-  const curAsgn  = asgnSel.value;
-  toolSel.innerHTML  = `<option value="">-- ${T("none")} --</option>` +
-    toolList.map(t  => `<option value="${esc(t.name)}">${esc(t.name)}</option>`).join("");
-  asgnSel.innerHTML  = `<option value="">-- ${T("none")} --</option>` +
-    assigneeList.map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join("");
-  toolSel.value  = curTool;
-  asgnSel.value  = curAsgn;
+  // カスタムセレクタの現在値を保持して再描画
+  const curTool = document.getElementById("f-tool").value;
+  const curAsgn = document.getElementById("f-assignee").value;
+  setSelVal("f-tool", curTool);
+  setSelVal("f-assignee", curAsgn);
 }
 
 /* ═══════════════════════════════════════════════
@@ -1474,66 +1538,99 @@ async function deleteTask() {
   tasks=tasks.filter(t=>t.id!==selectedTaskId);
   clearTaskForm(); renderTaskList(); drawGantt(); toast(T("msg_del_task"));
 }
-// ── Custom Date Picker ──────────────────────────────────
-let _dpActive=null,_dpYear,_dpMonth;
+// ── Floating popup positioning helper ───────────────────
+function _positionFloating(el, triggerEl) {
+  el.style.left='0px'; el.style.top='0px'; // reset to measure
+  const r = triggerEl.getBoundingClientRect();
+  const w = el.offsetWidth||330, h = el.offsetHeight||320;
+  let left = r.left, top = r.bottom + 4;
+  if (left + w > window.innerWidth - 6) left = Math.max(6, window.innerWidth - w - 6);
+  if (top  + h > window.innerHeight - 6) top = Math.max(6, r.top - h - 4);
+  el.style.left = left + 'px';
+  el.style.top  = top  + 'px';
+}
+
+// ── Custom Date Picker Floating ──────────────────────────
+let _dpId=null,_dpYear,_dpMonth;
+const _DP_LABELS={
+  'f-request':'依頼日','f-start':'着手日','f-dist':'配布日',
+  'f-end':'完了日','f-impl-date':'実施日'
+};
 function openDP(id){
-  if(_dpActive&&_dpActive!==id)closeDP(_dpActive);
-  _dpActive=id;
+  _dpId=id;
   const val=document.getElementById(id).value;
-  if(val){const d=new Date(val);_dpYear=d.getFullYear();_dpMonth=d.getMonth();}
+  if(val){const d=new Date(val+'T00:00:00');_dpYear=d.getFullYear();_dpMonth=d.getMonth();}
   else{const n=new Date();_dpYear=n.getFullYear();_dpMonth=n.getMonth();}
-  renderDP(id);
-  document.getElementById(id+'-dp-popup').classList.add('open');
-  const row=document.getElementById(id+'-dp-trigger').closest('.dp-input-row');
+  document.getElementById('dp-modal-title').textContent=_DP_LABELS[id]||id;
+  _dpModalRenderDays();
+  const modal=document.getElementById('dp-modal');
+  modal.classList.add('open');
+  _positionFloating(modal, document.getElementById(id+'-dp-trigger'));
+  const row=document.getElementById(id+'-dp-trigger')?.closest('.dp-input-row');
   if(row)row.classList.add('open');
 }
-function closeDP(id){
-  if(!id)return;
-  document.getElementById(id+'-dp-popup').classList.remove('open');
-  const row=document.getElementById(id+'-dp-trigger').closest('.dp-input-row');
-  if(row)row.classList.remove('open');
-  if(_dpActive===id)_dpActive=null;
+function closeDPModal(){
+  if(_dpId){
+    const row=document.getElementById(_dpId+'-dp-trigger')?.closest('.dp-input-row');
+    if(row)row.classList.remove('open');
+  }
+  document.getElementById('dp-modal').classList.remove('open');
+  _dpId=null;
 }
-function renderDP(id){
-  const popup=document.getElementById(id+'-dp-popup');
-  const val=document.getElementById(id).value;
-  popup.querySelector('.dp-popup-title').textContent=_dpYear+'年 '+(_dpMonth+1)+'月';
-  const grid=popup.querySelector('.dp-days');
+function closeDP(id){closeDPModal();}
+function _dpModalRenderDays(){
+  const val=_dpId?document.getElementById(_dpId).value:'';
+  const todayStr=new Date().toISOString().slice(0,10);
+  document.getElementById('dp-modal-month-btn').textContent=(_dpMonth+1)+'月';
+  const strip=document.getElementById('dp-modal-year-strip');
+  strip.innerHTML=Array.from({length:10},(_,i)=>_dpYear-4+i).map(y=>
+    `<button type="button" class="fp-ys-btn${y===_dpYear?' cur':''}" data-year="${y}">${y}</button>`
+  ).join('');
+  const grid=document.getElementById('dp-modal-days');
   const firstDow=new Date(_dpYear,_dpMonth,1).getDay();
   const daysInMonth=new Date(_dpYear,_dpMonth+1,0).getDate();
-  const prevMonthDays=new Date(_dpYear,_dpMonth,0).getDate();
-  const todayStr=new Date().toISOString().slice(0,10);
+  const prevDays=new Date(_dpYear,_dpMonth,0).getDate();
   let html='';
   for(let i=firstDow-1;i>=0;i--){
-    html+=`<div class="dp-day dp-other">${prevMonthDays-i}</div>`;
+    const d=prevDays-i;
+    const ds=fpFmtDate(new Date(_dpYear,_dpMonth-1,d));
+    html+=`<div class="fp-mc-day fp-other-month" data-ds="${ds}">${d}</div>`;
   }
   for(let d=1;d<=daysInMonth;d++){
-    const ds=`${_dpYear}-${String(_dpMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dow=new Date(_dpYear,_dpMonth,d).getDay();
-    let cls='dp-day';
-    if(dow===0)cls+=' dp-sun';
-    else if(dow===6)cls+=' dp-sat';
-    if(ds===todayStr)cls+=' dp-today';
-    if(ds===val)cls+=' dp-selected';
-    html+=`<div class="${cls}" data-date="${ds}">${d}</div>`;
+    const ds=fpFmtDate(new Date(_dpYear,_dpMonth,d));
+    let cls='fp-mc-day';
+    if(ds===todayStr)cls+=' fp-today';
+    if(ds===val)cls+=' fp-range-start fp-range-end';
+    html+=`<div class="${cls}" data-ds="${ds}">${d}</div>`;
   }
   const total=firstDow+daysInMonth;
   const rem=total%7===0?0:7-(total%7);
-  for(let d=1;d<=rem;d++)html+=`<div class="dp-day dp-other">${d}</div>`;
+  for(let d=1;d<=rem;d++){
+    const ds=fpFmtDate(new Date(_dpYear,_dpMonth+1,d));
+    html+=`<div class="fp-mc-day fp-other-month" data-ds="${ds}">${d}</div>`;
+  }
   grid.innerHTML=html;
-  grid.onclick=e=>{
-    const el=e.target.closest('[data-date]');
-    if(!el)return;
-    setDP(id,el.dataset.date);
-    closeDP(id);
-  };
 }
-function dpNav(id,delta){
-  _dpMonth+=delta;
-  if(_dpMonth>11){_dpMonth=0;_dpYear++;}
+function dpModalCalNav(dir){
+  _dpMonth+=dir;
   if(_dpMonth<0){_dpMonth=11;_dpYear--;}
-  renderDP(id);
+  if(_dpMonth>11){_dpMonth=0;_dpYear++;}
+  _dpModalRenderDays();
 }
+function dpModalYearNav(dir){_dpYear+=dir;_dpModalRenderDays();}
+function dpModalToday(){const n=new Date();_dpYear=n.getFullYear();_dpMonth=n.getMonth();_dpModalRenderDays();}
+function dpModalClear(){if(_dpId)setDP(_dpId,'');closeDPModal();}
+document.getElementById('dp-modal-days').addEventListener('click',e=>{
+  const day=e.target.closest('[data-ds]');
+  if(!day||!_dpId)return;
+  setDP(_dpId,day.dataset.ds);
+  closeDPModal();
+});
+document.getElementById('dp-modal-year-strip').addEventListener('click',e=>{
+  e.stopPropagation();
+  const btn=e.target.closest('[data-year]');
+  if(btn){_dpYear=Number(btn.dataset.year);_dpModalRenderDays();}
+});
 function setDP(id,val){
   document.getElementById(id).value=val;
   const text=document.getElementById(id+'-dp-text');
@@ -1548,20 +1645,70 @@ function dpTextBlur(id){
     const ds=`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
     if(!isNaN(new Date(ds).getTime())){setDP(id,ds);return;}
   }
-  // 無効な値は前の値に戻す
   const prev=document.getElementById(id).value;
   text.value=prev?prev.replace(/-/g,'/'):'';
 }
+// 外クリックで閉じる
 document.addEventListener('click',e=>{
-  if(_dpActive&&!e.target.closest('.dp-wrap'))closeDP(_dpActive);
+  if(_dpId&&!e.target.closest('#dp-modal')&&!e.target.closest('.dp-wrap'))closeDPModal();
 });
+
+// ── Custom Select Popup ───────────────────────────────────
+let _selId=null;
+const _SEL_TITLES={'f-assignee':'担当者','f-tool':'Tool'};
+function openSelPopup(id,triggerEl){
+  if(_selId===id){closeSelPopup();return;}
+  _selId=id;
+  document.getElementById('sel-popup-title').textContent=_SEL_TITLES[id]||id;
+  document.getElementById('sel-search').value='';
+  selRenderList();
+  const popup=document.getElementById('sel-popup');
+  popup.classList.add('open');
+  _positionFloating(popup,triggerEl);
+  triggerEl.classList.add('open');
+  setTimeout(()=>document.getElementById('sel-search').focus(),50);
+}
+function closeSelPopup(){
+  if(_selId){
+    document.getElementById(_selId+'-btn')?.classList.remove('open');
+  }
+  document.getElementById('sel-popup').classList.remove('open');
+  _selId=null;
+}
+function selRenderList(){
+  const q=(document.getElementById('sel-search').value||'').toLowerCase();
+  const list=_selId==='f-assignee'?assigneeList:toolList;
+  const curVal=document.getElementById(_selId+'-btn')?.dataset.value||'';
+  const none='なし';
+  let html=`<div class="sel-item sel-none${!curVal?' sel-selected':''}" data-val="">-- ${none} --</div>`;
+  html+=list.filter(x=>!q||x.name.toLowerCase().includes(q))
+    .map(x=>`<div class="sel-item${x.name===curVal?' sel-selected':''}" data-val="${esc(x.name)}">${esc(x.name)}</div>`)
+    .join('');
+  document.getElementById('sel-list').innerHTML=html;
+}
+function setSelVal(id,val){
+  const btn=document.getElementById(id+'-btn');
+  const lbl=document.getElementById(id+'-label');
+  document.getElementById(id).value=val;
+  btn.dataset.value=val;
+  lbl.textContent=val||'-- なし --';
+}
+document.getElementById('sel-list').addEventListener('click',e=>{
+  const item=e.target.closest('[data-val]');
+  if(!item||!_selId)return;
+  setSelVal(_selId,item.dataset.val);
+  closeSelPopup();
+});
+document.addEventListener('click',e=>{
+  if(_selId&&!e.target.closest('#sel-popup')&&!e.target.closest('.sel-btn'))closeSelPopup();
+},{capture:true});
 
 function clearTaskForm() {
   const today=new Date().toISOString().slice(0,10);
   const week =new Date(Date.now()+7*86400000).toISOString().slice(0,10);
   ["f-name","f-desc"].forEach(id=>document.getElementById(id).value="");
-  document.getElementById("f-assignee").value   = "";
-  document.getElementById("f-tool").value       = "";
+  setSelVal("f-assignee", "");
+  setSelVal("f-tool", "");
   setDP("f-impl-date","");
   setDP("f-request","");
   setDP("f-start",today);
@@ -1576,8 +1723,8 @@ function clearTaskForm() {
 function selectTask(id) {
   selectedTaskId = id;
   const t=tasks.find(x=>x.id===id); if(!t)return;
-  document.getElementById("f-assignee").value = t.assignee||"";
-  document.getElementById("f-tool").value     = t.tool||"";
+  setSelVal("f-assignee", t.assignee||"");
+  setSelVal("f-tool", t.tool||"");
   document.getElementById("f-name").value      = t.name;
   setDP("f-impl-date", t.implementation_date||"");
   setDP("f-request",   t.request_date||"");
@@ -2773,10 +2920,7 @@ async function aiParseTask(){
       setDP('f-end',t.end_date||'');
       document.getElementById('f-desc').value=t.description||'';
       // 担当者をセット
-      const asgn=document.getElementById('f-assignee');
-      if(asgn&&t.assignee){
-        for(const opt of asgn.options){if(opt.text===t.assignee){asgn.value=opt.value;break;}}
-      }
+      if(t.assignee) setSelVal('f-assignee', t.assignee);
       toast('タスク編集欄に反映しました');
     } else {
       const fields=Object.entries(t).map(([k,v])=>`<div class="ai-parsed-field"><div class="ai-parsed-key">${esc(k)}</div><div class="ai-parsed-val">${esc(String(v))}</div></div>`).join('');
