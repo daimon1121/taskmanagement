@@ -749,7 +749,18 @@ def api_demo_generate():
 @login_required
 def api_demo_delete():
     with get_db() as (conn, cur):
+        # DEMO担当者の名前一覧を取得
+        cur.execute("SELECT name FROM assignees WHERE email LIKE '%@dummy.test'")
+        demo_names = [r["name"] for r in cur.fetchall()]
+        # DEMOタスクを削除
         cur.execute("DELETE FROM tasks WHERE name LIKE '【DEMO】%'")
+        # DEMO担当者が割り当てられている通常タスクの担当者をNULLに
+        if demo_names:
+            cur.execute(
+                "UPDATE tasks SET assignee = NULL WHERE assignee = ANY(%s)",
+                (demo_names,)
+            )
+        # DEMO担当者を削除
         cur.execute("DELETE FROM assignees WHERE email LIKE '%@dummy.test'")
         conn.commit()
     return jsonify({"ok": True})

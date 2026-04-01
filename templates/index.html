@@ -3088,7 +3088,7 @@ function dpGenerate() {
     if (d.ok) {
       _dpMsg('✅ DEMOデータを生成しました', true);
       dpLoadStats();
-      loadData();
+      loadAssignees().then(() => { refreshDataLists(); loadData(); });
     } else { _dpMsg('❌ 生成に失敗しました', false); }
   }).catch(() => _dpMsg('❌ 通信エラー', false));
 }
@@ -3098,7 +3098,7 @@ function dpDelete() {
     if (d.ok) {
       _dpMsg('🗑 DEMOデータを削除しました', true);
       dpLoadStats();
-      loadData();
+      loadAssignees().then(() => { refreshDataLists(); loadData(); renderTaskList(); });
     } else { _dpMsg('❌ 削除に失敗しました', false); }
   }).catch(() => _dpMsg('❌ 通信エラー', false));
 }
