@@ -81,6 +81,36 @@ tr:hover td{background:rgba(52,73,94,.5)}
               font-size:12px;font-weight:500;transition:background .15s}
 .app-link-btn:hover{background:#3d566e}
 .table-wrap-mb{margin-bottom:28px}
+
+/* ── Demo Data ── */
+.demo-stats-row{display:flex;gap:14px;margin-bottom:20px}
+.demo-stat-card{background:#2c3e50;border-radius:10px;padding:16px 24px;min-width:140px;
+                box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.demo-stat-label{font-size:11px;color:#7f8c8d;font-weight:700;text-transform:uppercase;
+                 letter-spacing:.06em;margin-bottom:6px}
+.demo-stat-val{font-size:28px;font-weight:700;color:#a78bfa}
+.demo-block{background:#2c3e50;border-radius:10px;padding:18px 20px;margin-bottom:14px;
+            box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.demo-block-danger{border-left:3px solid #e74c3c}
+.demo-block-title{font-size:12px;font-weight:700;color:#7f8c8d;text-transform:uppercase;
+                  letter-spacing:.06em;margin-bottom:12px}
+.demo-form-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.demo-label{font-size:13px;width:80px;flex-shrink:0}
+.demo-num{background:#34495e;border:1px solid #4a6278;border-radius:6px;color:#ecf0f1;
+          padding:6px 10px;font-size:13px;width:80px;outline:none}
+.demo-num:focus{border-color:#a78bfa}
+.demo-hint{font-size:11px;color:#7f8c8d}
+.demo-note{font-size:11px;color:#7f8c8d;margin-bottom:12px;line-height:1.5}
+.demo-btn-gen{background:#a78bfa;color:#fff;border:none;border-radius:6px;padding:8px 20px;
+              font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.demo-btn-gen:hover{background:#9061f9}
+.demo-btn-del{background:#e74c3c;color:#fff;border:none;border-radius:6px;padding:8px 20px;
+              font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.demo-btn-del:hover{background:#c0392b}
+.demo-msg{padding:10px 14px;border-radius:6px;font-size:13px;margin-top:10px}
+.demo-msg-hidden{display:none}
+.demo-msg.ok{background:#1a4731;color:#2ecc71}
+.demo-msg.err{background:#4a1a1a;color:#e74c3c}
 </style>
 </head>
 <body>
@@ -252,6 +282,46 @@ tr:hover td{background:rgba(52,73,94,.5)}
   </div>
 </div>
 
+<!-- Demo Data -->
+<div class="section">
+  <div class="section-title">🧪 デモデータ管理</div>
+
+  <div class="demo-stats-row" id="demo-stats-row">
+    <div class="demo-stat-card">
+      <div class="demo-stat-label">ダミー担当者</div>
+      <div class="demo-stat-val" id="dummy-assignee-count">-</div>
+    </div>
+    <div class="demo-stat-card">
+      <div class="demo-stat-label">ダミータスク</div>
+      <div class="demo-stat-val" id="dummy-task-count">-</div>
+    </div>
+  </div>
+
+  <div class="demo-block">
+    <div class="demo-block-title">追加</div>
+    <div class="demo-form-row">
+      <label class="demo-label">担当者数</label>
+      <input type="number" id="inp-assignees" class="demo-num" value="5" min="1" max="10" title="担当者数" placeholder="5">
+      <span class="demo-hint">（最大10人）</span>
+    </div>
+    <div class="demo-form-row">
+      <label class="demo-label">タスク数</label>
+      <input type="number" id="inp-tasks" class="demo-num" value="20" min="1" max="100" title="タスク数" placeholder="20">
+      <span class="demo-hint">（最大100件）</span>
+    </div>
+    <div class="demo-note">※ 担当者名は「デモ 太郎」など、タスク名は「【DEMO】〜」で登録されます</div>
+    <button type="button" class="demo-btn-gen" onclick="generateDummy()">🎲 ダミーデータを生成</button>
+  </div>
+
+  <div class="demo-block demo-block-danger">
+    <div class="demo-block-title">削除</div>
+    <div class="demo-note">「デモ」担当者と「【DEMO】」タスクをすべて削除します</div>
+    <button type="button" class="demo-btn-del" onclick="deleteDummy()">🗑 全ダミーデータを削除</button>
+  </div>
+
+  <div id="demo-msg" class="demo-msg demo-msg-hidden"></div>
+</div>
+
 <script>
 function filterTable() {
   const q = document.getElementById("search").value.toLowerCase();
@@ -264,6 +334,43 @@ function filterTable() {
   });
   document.getElementById("count").textContent = q ? `${count}/{{ users | length }}件` : `{{ users | length }}件`;
 }
+
+// ── Demo Data ──
+function _showDemoMsg(text, isOk) {
+  const el = document.getElementById("demo-msg");
+  el.textContent = text;
+  el.className = "demo-msg " + (isOk ? "ok" : "err");
+}
+
+function loadDummyStats() {
+  fetch("/admin/dummy_stats").then(r => r.json()).then(d => {
+    document.getElementById("dummy-assignee-count").textContent = d.assignees + " 人";
+    document.getElementById("dummy-task-count").textContent    = d.tasks    + " 件";
+  });
+}
+
+function generateDummy() {
+  const assignees = parseInt(document.getElementById("inp-assignees").value) || 5;
+  const tasks     = parseInt(document.getElementById("inp-tasks").value)     || 20;
+  fetch("/admin/generate_dummy", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({assignees, tasks})
+  }).then(r => r.json()).then(d => {
+    if (d.ok) { _showDemoMsg("✅ ダミーデータを生成しました", true); loadDummyStats(); }
+    else       { _showDemoMsg("❌ 生成に失敗しました", false); }
+  }).catch(() => _showDemoMsg("❌ 通信エラー", false));
+}
+
+function deleteDummy() {
+  if (!confirm("ダミー担当者とダミータスクをすべて削除しますか？")) return;
+  fetch("/admin/delete_dummy", {method: "POST"}).then(r => r.json()).then(d => {
+    if (d.ok) { _showDemoMsg("🗑 ダミーデータを削除しました", true); loadDummyStats(); }
+    else       { _showDemoMsg("❌ 削除に失敗しました", false); }
+  }).catch(() => _showDemoMsg("❌ 通信エラー", false));
+}
+
+loadDummyStats();
 </script>
 </body>
 </html>

@@ -709,6 +709,82 @@ def admin_dashboard():
     users, stats, _ = _get_site_stats()
     return render_template("admin_dashboard.html", users=users, stats=stats)
 
+# ─── Admin: Dummy Data ────────────────────────────────────────────────────────
+_DEMO_ASSIGNEE_NAMES = [
+    ("デモ 太郎", "demo_taro"), ("デモ 花子", "demo_hanako"), ("デモ 次郎", "demo_jiro"),
+    ("デモ 三郎", "demo_saburo"), ("デモ 桃子", "demo_momoko"), ("デモ 健一", "demo_kenichi"),
+    ("デモ 由紀", "demo_yuki"), ("デモ 大介", "demo_daisuke"), ("デモ 奈美", "demo_nami"),
+    ("デモ 翔太", "demo_shota"),
+]
+_DEMO_TASK_NAMES = [
+    "【DEMO】要件定義書の作成", "【DEMO】UIデザインのレビュー", "【DEMO】バックエンドAPI実装",
+    "【DEMO】データベース設計", "【DEMO】単体テスト実施", "【DEMO】結合テスト計画",
+    "【DEMO】パフォーマンス改善", "【DEMO】ドキュメント整備", "【DEMO】セキュリティ診断",
+    "【DEMO】リリース作業", "【DEMO】監視設定", "【DEMO】コードレビュー",
+    "【DEMO】依存ライブラリ更新", "【DEMO】CI/CD環境構築", "【DEMO】ユーザビリティテスト",
+    "【DEMO】エラーログ調査", "【DEMO】バグ修正対応", "【DEMO】仕様変更対応",
+    "【DEMO】顧客向け資料作成", "【DEMO】進捗報告会準備",
+]
+_DEMO_STATUSES  = ["未着手", "進行中", "完了", "未着手", "未着手"]
+_DEMO_PRIORITIES = ["高", "中", "低", "高", "中"]
+
+@app.route("/admin/dummy_stats")
+@admin_required
+def admin_dummy_stats():
+    with get_db() as (_, cur):
+        cur.execute("SELECT COUNT(*) FROM assignees WHERE email LIKE '%@dummy.test'")
+        a_count = cur.fetchone()["count"]
+        cur.execute("SELECT COUNT(*) FROM tasks WHERE name LIKE '【DEMO】%'")
+        t_count = cur.fetchone()["count"]
+    return jsonify({"assignees": a_count, "tasks": t_count})
+
+@app.route("/admin/generate_dummy", methods=["POST"])
+@admin_required
+def admin_generate_dummy():
+    import random
+    data   = request.json or {}
+    n_a    = max(1, min(int(data.get("assignees", 5)), 10))
+    n_t    = max(1, min(int(data.get("tasks", 20)), 100))
+    today  = datetime.now()
+    def d(n): return (today + timedelta(days=n)).strftime("%Y-%m-%d")
+    with get_db() as (conn, cur):
+        # 担当者追加（既存は skip）
+        added_names = []
+        for name, slug in _DEMO_ASSIGNEE_NAMES[:n_a]:
+            email = f"{slug}@dummy.test"
+            cur.execute("SELECT id FROM assignees WHERE email=%s", (email,))
+            if not cur.fetchone():
+                cur.execute("INSERT INTO assignees (name, email) VALUES (%s,%s)", (name, email))
+                added_names.append(name)
+            else:
+                added_names.append(name)
+        # タスク追加
+        task_names = _DEMO_TASK_NAMES * ((n_t // len(_DEMO_TASK_NAMES)) + 1)
+        for i in range(n_t):
+            name     = task_names[i]
+            status   = _DEMO_STATUSES[i % len(_DEMO_STATUSES)]
+            priority = _DEMO_PRIORITIES[i % len(_DEMO_PRIORITIES)]
+            assignee = added_names[i % len(added_names)]
+            offset   = random.randint(-30, 30)
+            rq = d(offset - 10); s = d(offset - 7)
+            di = d(offset + 3);  e = d(offset + 7)
+            cur.execute("""
+                INSERT INTO tasks (name,request_date,start_date,distribution_date,end_date,
+                                   status,priority,assignee,description)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (name, rq, s, di, e, status, priority, assignee, "デモ用のサンプルタスクです。"))
+        conn.commit()
+    return jsonify({"ok": True})
+
+@app.route("/admin/delete_dummy", methods=["POST"])
+@admin_required
+def admin_delete_dummy():
+    with get_db() as (conn, cur):
+        cur.execute("DELETE FROM tasks WHERE name LIKE '【DEMO】%'")
+        cur.execute("DELETE FROM assignees WHERE email LIKE '%@dummy.test'")
+        conn.commit()
+    return jsonify({"ok": True})
+
 # ─── AI Routes (ルールベース) ─────────────────────────────────────────────────
 _SUBTASK_TEMPLATES = {
     "開発": ["要件定義", "設計", "実装", "単体テスト", "レビュー対応", "結合テスト", "リリース作業"],
