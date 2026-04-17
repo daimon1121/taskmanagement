@@ -8,8 +8,9 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 
-import psycopg2
-import psycopg2.extras
+import json as _json
+import ssl as _ssl
+import urllib3 as _urllib3
 import stripe
 from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_mail import Mail, Message
@@ -36,17 +37,80 @@ stripe.api_key         = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET  = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PRICE_ID        = os.environ.get("STRIPE_PRICE_ID", "")
-WEBMASTER_EMAIL        = "isamu.hayashi@hp.com"
+WEBMASTER_EMAIL        = "daimon1121@gmail.com"
 
 FREE_TASK_LIMIT = 10
 TOOLS_VER       = 2
 
-# ─── Database ─────────────────────────────────────────────────────────────────
+# ─── Database (Neon HTTP API) ─────────────────────────────────────────────────
 _DATABASE_URL = os.environ.get("DATABASE_URL", "").replace("postgres://", "postgresql://", 1)
+
+try:
+    import truststore as _truststore
+    _ssl_ctx = _truststore.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
+except ImportError:
+    _ssl_ctx = _ssl.create_default_context()
+
+_http_pool = _urllib3.PoolManager(ssl_context=_ssl_ctx)
+_m = re.match(r'postgresql://[^@]+@([^/?]+)', _DATABASE_URL)
+_NEON_HOST = _m.group(1) if _m else ''
+
+def _sql_to_pg(query, params):
+    """psycopg2 の %s → PostgreSQL $1,$2,... に変換、%% → % もエスケープ解除"""
+    if not params:
+        return query, []
+    n = [0]
+    def repl(m):
+        if m.group(0) == '%%':
+            return '%'
+        n[0] += 1
+        return f'${n[0]}'
+    return re.sub(r'%%|%s', repl, query), list(params)
+
+class _Cursor:
+    def __init__(self):
+        self._rows = []
+        self._pos  = 0
+        self.rowcount   = -1
+        self.description = None
+
+    def execute(self, query, params=None):
+        q, p = _sql_to_pg(query, params)
+        resp = _http_pool.request(
+            "POST", f"https://{_NEON_HOST}/sql",
+            headers={"Neon-Connection-String": _DATABASE_URL,
+                     "Content-Type": "application/json"},
+            body=_json.dumps({"query": q, "params": p}).encode()
+        )
+        data = _json.loads(resp.data)
+        if resp.status >= 400:
+            raise Exception(f"DB Error: {data.get('message', resp.status)}")
+        self._rows = data.get("rows", [])
+        self._pos  = 0
+        self.rowcount = data.get("rowCount", len(self._rows))
+
+    def fetchone(self):
+        if self._pos >= len(self._rows):
+            return None
+        row = self._rows[self._pos]
+        self._pos += 1
+        return row
+
+    def fetchall(self):
+        rows = self._rows[self._pos:]
+        self._pos = len(self._rows)
+        return rows
+
+    def close(self): pass
+
+class _Conn:
+    def cursor(self):  return _Cursor()
+    def commit(self):  pass
+    def close(self):   pass
 
 @contextmanager
 def get_db():
-    conn = psycopg2.connect(_DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = _Conn()
     cur  = conn.cursor()
     try:
         yield conn, cur
