@@ -3,5 +3,6 @@ flask-mail
 stripe
 werkzeug
 itsdangerous
-psycopg2-binary
+urllib3
+truststore
 python-dotenv

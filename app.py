@@ -12,7 +12,7 @@ import json as _json
 import ssl as _ssl
 import urllib3 as _urllib3
 import stripe
-from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
 from flask_mail import Mail, Message
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -20,8 +20,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 # ─── App & Config ─────────────────────────────────────────────────────────────
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
-app.config["TEMPLATES_AUTO_RELOAD"] = True
-app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+app.config["TEMPLATES_AUTO_RELOAD"] = os.environ.get("FLASK_ENV") == "development"
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0 if os.environ.get("FLASK_ENV") == "development" else 3600
 
 app.config.update(
     MAIL_SERVER        = os.environ.get("MAIL_SERVER", "smtp.gmail.com"),
@@ -286,8 +286,10 @@ def find_user_by_id(uid):
     return dict(row) if row else None
 
 def current_user():
-    uid = session.get("user_id")
-    return find_user_by_id(uid) if uid else None
+    if "user" not in g:
+        uid = session.get("user_id")
+        g.user = find_user_by_id(uid) if uid else None
+    return g.user
 
 def login_required(f):
     @wraps(f)
@@ -690,16 +692,24 @@ def get_tasks():
 @app.route("/api/tasks", methods=["POST"])
 @login_required
 def add_task():
-    data = load_data()
-    if not is_pro() and len(data["tasks"]) >= FREE_TASK_LIMIT:
-        return jsonify({"error": "plan_limit",
-                        "message": f"無料プランはタスク{FREE_TASK_LIMIT}件までです。Proにアップグレードしてください。"}), 403
     task = request.json
-    key  = _composite_key(task)
-    if any(_composite_key(t) == key for t in data["tasks"]):
-        return jsonify({"error": "duplicate",
-                        "message": "同じ担当者・Tool・タスク名・実施日の組み合わせがすでに存在します"}), 409
     with get_db() as (_, cur):
+        if not is_pro():
+            cur.execute("SELECT COUNT(*) FROM tasks")
+            if cur.fetchone()["count"] >= FREE_TASK_LIMIT:
+                return jsonify({"error": "plan_limit",
+                                "message": f"無料プランはタスク{FREE_TASK_LIMIT}件までです。Proにアップグレードしてください。"}), 403
+        cur.execute("""
+            SELECT 1 FROM tasks
+            WHERE assignee IS NOT DISTINCT FROM %s
+              AND tool IS NOT DISTINCT FROM %s
+              AND name IS NOT DISTINCT FROM %s
+              AND implementation_date IS NOT DISTINCT FROM %s
+            LIMIT 1
+        """, (task.get("assignee"), task.get("tool"), task.get("name"), task.get("implementation_date")))
+        if cur.fetchone():
+            return jsonify({"error": "duplicate",
+                            "message": "同じ担当者・Tool・タスク名・実施日の組み合わせがすでに存在します"}), 409
         cur.execute("""
             INSERT INTO tasks (name,request_date,start_date,distribution_date,end_date,
                                status,priority,tool,assignee,description,implementation_date)
@@ -711,12 +721,20 @@ def add_task():
 @app.route("/api/tasks/<int:task_id>", methods=["PUT"])
 @login_required
 def update_task(task_id):
-    data = load_data()
     task = request.json
-    key  = _composite_key(task)
-    if any(_composite_key(t) == key and t["id"] != task_id for t in data["tasks"]):
-        return jsonify({"error": "duplicate",
-                        "message": "同じ担当者・Tool・タスク名・実施日の組み合わせがすでに存在します"}), 409
+    with get_db() as (_, cur):
+        cur.execute("""
+            SELECT 1 FROM tasks
+            WHERE assignee IS NOT DISTINCT FROM %s
+              AND tool IS NOT DISTINCT FROM %s
+              AND name IS NOT DISTINCT FROM %s
+              AND implementation_date IS NOT DISTINCT FROM %s
+              AND id != %s
+            LIMIT 1
+        """, (task.get("assignee"), task.get("tool"), task.get("name"), task.get("implementation_date"), task_id))
+        if cur.fetchone():
+            return jsonify({"error": "duplicate",
+                            "message": "同じ担当者・Tool・タスク名・実施日の組み合わせがすでに存在します"}), 409
     with get_db() as (_, cur):
         cur.execute("""
             UPDATE tasks SET name=%s,request_date=%s,start_date=%s,distribution_date=%s,
