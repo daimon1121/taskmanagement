@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 import json as _json
+import random
 import ssl as _ssl
 import urllib3 as _urllib3
 import stripe
@@ -273,17 +274,14 @@ def _verify_reset_token(token, max_age=3600):
     except (SignatureExpired, BadSignature):
         return None
 
-def find_user_by_email(email):
+def _find_user(field, value):
     with get_db() as (_, cur):
-        cur.execute("SELECT * FROM users WHERE email=%s", (email,))
+        cur.execute(f"SELECT * FROM users WHERE {field}=%s", (value,))
         row = cur.fetchone()
     return dict(row) if row else None
 
-def find_user_by_id(uid):
-    with get_db() as (_, cur):
-        cur.execute("SELECT * FROM users WHERE id=%s", (uid,))
-        row = cur.fetchone()
-    return dict(row) if row else None
+def find_user_by_email(email): return _find_user("email", email)
+def find_user_by_id(uid):      return _find_user("id", uid)
 
 def current_user():
     if "user" not in g:
@@ -344,9 +342,6 @@ def load_tools():
 def load_assignees():
     assignees, next_id = _load_table("assignees")
     return {"assignees": assignees, "next_id": next_id}
-
-def _composite_key(t):
-    return (t.get("assignee",""), t.get("tool",""), t.get("name",""), t.get("implementation_date",""))
 
 _TASK_FIELDS = (
     "name", "request_date", "start_date", "distribution_date", "end_date",
@@ -762,9 +757,6 @@ def api_me():
 
 # ─── Admin Routes ─────────────────────────────────────────────────────────────
 # ─── Admin: Dummy Data ────────────────────────────────────────────────────────
-def _webmaster_required():
-    u = current_user()
-    return u and u.get("email") == WEBMASTER_EMAIL
 _DEMO_ASSIGNEE_NAMES = [
     ("デモ 太郎", "demo_taro"), ("デモ 花子", "demo_hanako"), ("デモ 次郎", "demo_jiro"),
     ("デモ 三郎", "demo_saburo"), ("デモ 桃子", "demo_momoko"), ("デモ 健一", "demo_kenichi"),
