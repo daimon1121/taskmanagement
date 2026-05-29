@@ -12,12 +12,26 @@ import json as _json
 import random
 import ssl as _ssl
 import urllib3 as _urllib3
+import sentry_sdk
 import stripe
 from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_mail import Mail, Message
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.security import check_password_hash, generate_password_hash
+
+# ─── Sentry ───────────────────────────────────────────────────────────────────
+_SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+if _SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        integrations=[FlaskIntegration()],
+        traces_sample_rate=0.2,
+        send_default_pii=False,
+    )
 
 # ─── App & Config ─────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -36,6 +50,7 @@ app.config.update(
 )
 mail = Mail(app)
 csrf = CSRFProtect(app)
+limiter = Limiter(get_remote_address, app=app, default_limits=[], storage_uri="memory://")
 
 _EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
@@ -43,6 +58,11 @@ _EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 def csrf_error(e):
     flash("セッションが切れました。もう一度お試しください。")
     return redirect(request.referrer or url_for("login"))
+
+@app.errorhandler(429)
+def rate_limit_error(e):
+    flash("試行回数が多すぎます。しばらく時間をおいてから再試行してください。")
+    return redirect(request.referrer or url_for("login")), 429
 
 stripe.api_key         = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
@@ -366,6 +386,7 @@ def _task_params(task):
 
 # ─── Auth Routes ──────────────────────────────────────────────────────────────
 @app.route("/signup", methods=["GET","POST"])
+@limiter.limit("10 per hour")
 def signup():
     if request.method == "POST":
         email    = request.form.get("email","").strip().lower()
@@ -393,6 +414,7 @@ def signup():
     return render_template("signup.html")
 
 @app.route("/login", methods=["GET","POST"])
+@limiter.limit("10 per minute; 50 per hour")
 def login():
     if request.method == "POST":
         email    = request.form.get("email","").strip().lower()

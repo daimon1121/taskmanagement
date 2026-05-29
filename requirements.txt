@@ -1,6 +1,8 @@
 flask
+flask-limiter
 flask-mail
 flask-wtf
+sentry-sdk[flask]
 stripe
 werkzeug
 itsdangerous
