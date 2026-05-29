@@ -464,8 +464,8 @@ def reset_password(token):
     if request.method == "POST":
         password = request.form.get("password","")
         confirm  = request.form.get("confirm","")
-        if len(password) < 6:
-            flash("パスワードは6文字以上で入力してください。")
+        if len(password) < 8:
+            flash("パスワードは8文字以上で入力してください。")
             return render_template("reset_password.html", token=token)
         if password != confirm:
             flash("パスワードが一致しません。")
