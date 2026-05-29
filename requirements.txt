@@ -1,5 +1,6 @@
 flask
 flask-limiter
+pytest
 flask-mail
 flask-wtf
 sentry-sdk[flask]
