@@ -95,6 +95,7 @@ h1{font-size:24px;color:#1a252f;text-align:center;margin-bottom:8px}
         <span class="btn btn-current" data-i18n="current_btn">現在のプラン</span>
       {% else %}
         <form action="/create-checkout-session" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-upgrade" data-i18n="upgrade_btn">Proにアップグレード</button>
         </form>
       {% endif %}

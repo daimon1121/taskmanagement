@@ -15,6 +15,7 @@ import urllib3 as _urllib3
 import stripe
 from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
 from flask_mail import Mail, Message
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -23,6 +24,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
 app.config["TEMPLATES_AUTO_RELOAD"] = os.environ.get("FLASK_ENV") == "development"
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0 if os.environ.get("FLASK_ENV") == "development" else 3600
+app.config["WTF_CSRF_TIME_LIMIT"] = 3600
 
 app.config.update(
     MAIL_SERVER        = os.environ.get("MAIL_SERVER", "smtp.gmail.com"),
@@ -33,6 +35,14 @@ app.config.update(
     MAIL_DEFAULT_SENDER= os.environ.get("MAIL_USERNAME", ""),
 )
 mail = Mail(app)
+csrf = CSRFProtect(app)
+
+_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+@app.errorhandler(CSRFError)
+def csrf_error(e):
+    flash("セッションが切れました。もう一度お試しください。")
+    return redirect(request.referrer or url_for("login"))
 
 stripe.api_key         = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
@@ -274,9 +284,12 @@ def _verify_reset_token(token, max_age=3600):
     except (SignatureExpired, BadSignature):
         return None
 
+_USER_LOOKUP = {"email": "email", "id": "id"}  # whitelist to prevent SQL injection
+
 def _find_user(field, value):
+    col = _USER_LOOKUP[field]  # KeyError if unknown field — intentional
     with get_db() as (_, cur):
-        cur.execute(f"SELECT * FROM users WHERE {field}=%s", (value,))
+        cur.execute(f"SELECT * FROM users WHERE {col}=%s", (value,))
         row = cur.fetchone()
     return dict(row) if row else None
 
@@ -359,6 +372,12 @@ def signup():
         password = request.form.get("password","")
         if not email or not password:
             flash("メールアドレスとパスワードを入力してください")
+            return render_template("signup.html")
+        if not _EMAIL_RE.match(email):
+            flash("有効なメールアドレスを入力してください")
+            return render_template("signup.html")
+        if len(password) < 8:
+            flash("パスワードは8文字以上で入力してください")
             return render_template("signup.html")
         if find_user_by_email(email):
             flash("このメールアドレスはすでに登録されています")
@@ -476,6 +495,7 @@ def payment_success():
     return render_template("success.html")
 
 @app.route("/webhook", methods=["POST"])
+@csrf.exempt
 def webhook():
     payload = request.get_data()
     sig     = request.headers.get("Stripe-Signature","")
@@ -627,11 +647,13 @@ def account():
 @app.route("/api/account/profile", methods=["POST"])
 @login_required
 def update_profile():
-    data = request.get_json()
-    display_name = (data.get("display_name") or "").strip()
+    data = request.get_json() or {}
+    display_name = (data.get("display_name") or "").strip()[:50]
     email = (data.get("email") or "").strip().lower()
     if not email:
         return jsonify({"error": "メールアドレスを入力してください"}), 400
+    if not _EMAIL_RE.match(email):
+        return jsonify({"error": "有効なメールアドレスを入力してください"}), 400
     u = current_user()
     if email != u["email"] and find_user_by_email(email):
         return jsonify({"error": "このメールアドレスはすでに使用されています"}), 400
@@ -668,15 +690,18 @@ def delete_account():
 @app.route("/api/feedback", methods=["POST"])
 @login_required
 def submit_feedback():
-    data = request.get_json()
-    rating  = data.get("rating")
-    message = (data.get("message") or "").strip()
-    if not rating or not (1 <= int(rating) <= 5):
+    data = request.get_json() or {}
+    try:
+        rating = int(data.get("rating") or 0)
+    except (TypeError, ValueError):
+        rating = 0
+    message = (data.get("message") or "").strip()[:1000]
+    if not (1 <= rating <= 5):
         return jsonify({"error": "評価を選択してください"}), 400
     u = current_user()
     with get_db() as (_, cur):
         cur.execute("INSERT INTO feedback (user_id, rating, message) VALUES (%s, %s, %s)",
-                    (u["id"], int(rating), message or None))
+                    (u["id"], rating, message or None))
     return jsonify({"ok": True})
 
 @app.route("/api/tasks", methods=["GET"])
@@ -684,10 +709,30 @@ def submit_feedback():
 def get_tasks():
     return jsonify(load_data())
 
+_VALID_STATUS   = {"未着手", "進行中", "完了", "保留"}
+_VALID_PRIORITY = {"高", "中", "低", ""}
+
+def _validate_task(task):
+    if not task:
+        return "タスクデータが不正です"
+    name = (task.get("name") or "").strip()
+    if not name:
+        return "タスク名は必須です"
+    if len(name) > 200:
+        return "タスク名は200文字以内で入力してください"
+    if task.get("status") and task["status"] not in _VALID_STATUS:
+        return "ステータスの値が不正です"
+    if task.get("priority") and task["priority"] not in _VALID_PRIORITY:
+        return "優先度の値が不正です"
+    return None
+
 @app.route("/api/tasks", methods=["POST"])
 @login_required
 def add_task():
     task = request.json
+    err = _validate_task(task)
+    if err:
+        return jsonify({"error": err}), 400
     with get_db() as (_, cur):
         if not is_pro():
             cur.execute("SELECT COUNT(*) FROM tasks")
@@ -717,6 +762,9 @@ def add_task():
 @login_required
 def update_task(task_id):
     task = request.json
+    err = _validate_task(task)
+    if err:
+        return jsonify({"error": err}), 400
     with get_db() as (_, cur):
         cur.execute("""
             SELECT 1 FROM tasks

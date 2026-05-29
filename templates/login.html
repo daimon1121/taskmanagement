@@ -54,6 +54,7 @@ input:focus{border-color:#3498db}
     {% endif %}
   {% endwith %}
   <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label data-i18n="email_label">メールアドレス</label>
     <input type="email" name="email" required autofocus>
     <label data-i18n="password_label">パスワード</label>
