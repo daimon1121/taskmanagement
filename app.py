@@ -549,6 +549,20 @@ def _downgrade_by_subscription(subscription_id):
             WHERE stripe_subscription_id=%s
         """, (subscription_id,))
 
+@app.route("/api/account/cancel-subscription", methods=["POST"])
+@login_required
+def cancel_subscription():
+    u = current_user()
+    sub_id = u.get("stripe_subscription_id")
+    if not sub_id:
+        return jsonify({"error": "有効なサブスクリプションがありません"}), 400
+    try:
+        sub = stripe.Subscription.modify(sub_id, cancel_at_period_end=True)
+        period_end = datetime.fromtimestamp(sub["current_period_end"]).strftime("%Y年%m月%d日")
+        return jsonify({"ok": True, "period_end": period_end})
+    except Exception as e:
+        return jsonify({"error": f"解約処理に失敗しました: {e}"}), 500
+
 # ─── API: Tools ───────────────────────────────────────────────────────────────
 @app.route("/api/tools", methods=["GET"])
 @login_required

@@ -336,7 +336,8 @@ body{font-family:"Segoe UI","Meiryo",sans-serif;background:#1e1e1e;color:#d4d4d4
             </div>
             <span class="plan-active">● 有効</span>
           </div>
-          <p class="plan-note">プランのキャンセルや支払い方法の変更はStripeカスタマーポータルから行えます。</p>
+          <p class="plan-note">サブスクリプションを解約すると、現在の請求期間終了まで引き続きProプランをご利用いただけます。</p>
+          <button type="button" class="btn btn-cancel" onclick="openCancelDialog()">サブスクリプションを解約する</button>
           {% else %}
           <div class="plan-card">
             <div>
@@ -678,6 +679,18 @@ body{font-family:"Segoe UI","Meiryo",sans-serif;background:#1e1e1e;color:#d4d4d4
   </div>
 </div>
 
+<!-- 解約確認ダイアログ -->
+<div class="overlay" id="cancel-overlay">
+  <div class="dialog">
+    <h3>サブスクリプションを解約しますか？</h3>
+    <p>解約後も現在の請求期間終了日までProプランをご利用いただけます。期間終了後は自動的に無料プランに移行します。</p>
+    <div class="dialog-btns">
+      <button type="button" class="btn-primary btn-cancel" onclick="closeCancelDialog()">キャンセル</button>
+      <button type="button" class="btn-danger-outline" id="btn-cancel-sub" onclick="cancelSubscription()">解約する</button>
+    </div>
+  </div>
+</div>
+
 <!-- 削除確認ダイアログ -->
 <div class="overlay" id="delete-overlay">
   <div class="dialog">
@@ -758,6 +771,24 @@ async function savePassword() {
   if (!res.ok) { toast(data.error, true); return; }
   toast('パスワードを変更しました');
   ['input-cur-pw','input-new-pw','input-new-pw2'].forEach(id => document.getElementById(id).value='');
+}
+
+function openCancelDialog() { document.getElementById('cancel-overlay').classList.add('open'); }
+function closeCancelDialog() { document.getElementById('cancel-overlay').classList.remove('open'); }
+
+async function cancelSubscription() {
+  const btn = document.getElementById('btn-cancel-sub');
+  btn.textContent = '処理中…'; btn.disabled = true;
+  const res = await fetch('/api/account/cancel-subscription', {method: 'POST'});
+  const data = await res.json();
+  if (res.ok) {
+    closeCancelDialog();
+    toast(`解約しました。${data.period_end}まで引き続きご利用いただけます。`);
+    setTimeout(() => location.reload(), 3000);
+  } else {
+    toast(data.error || 'エラーが発生しました', true);
+    btn.textContent = '解約する'; btn.disabled = false;
+  }
 }
 
 function openDeleteDialog() { document.getElementById('delete-overlay').classList.add('open'); }
